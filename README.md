@@ -1,7 +1,13 @@
 # Gjensidige-Vekteren
 Hackathon Gjensidige
 
-## Vekteren chat
+## Vekteren prototype
+
+The home route `/` implements the Figma insurance overview. Select a policy to view its details; Bil has staged coverage switches and **Lagre endringer** applies deterministic mock actions to the local profile. Turning off Delkasko also turns off Kasko; enabling Kasko also enables Delkasko. The monthly price and home total reflect saved selections. Prices and the illustrated “100 % dekket” score are fictitious prototype data, not quotes or a needs assessment.
+
+The employer-paid travel policy is read-only. Its family-coverage action opens a contextual question, not a purchase. **Spør Vekter’n** opens the existing chat at `/chat`; the chat receives the same saved profile and can change supported demo options through validated mock actions. Asking questions still requires the AI environment variables below.
+
+Stored state uses schema version 2 with Kari Haugen's onboarding scenario. House and contents are grouped in the overview but remain separate policies for coverage changes. Open Kari's profile button, then the conversation room, to manage conversations or reset demo data through **Om Vekter’n**.
 
 ### Internal component library
 
@@ -23,8 +29,9 @@ npm run typecheck
 
 | Route | What it is |
 | --- | --- |
-| `/` | Onboarding (7 steps, Figma "Vekter'n – prototype"). The step is in the URL: `/?steg=1` … `/?steg=7`. The default is 1, and invalid values are clamped. Everything except the chat is mocked. |
-| `/chat` | Chat with Vekter'n. "Gå til oversikten" in the last onboarding step leads here. |
+| `/` | Insurance overview. New profiles start onboarding; completed profiles see the desktop overview/chat layout or mobile overview. |
+| `/onboarding` | Seven onboarding steps, from `/onboarding?steg=1` to `steg=7`. Existing `/?steg=N` links redirect here. Completion leads to `/`. |
+| `/chat` | Chat with Vekter'n, with the persistent overview column on desktop. |
 | `/components` | Interactive catalog of the component library. |
 | `/api/chat` | Server-only resource route (POST) for the AI call. |
 
@@ -38,7 +45,7 @@ The onboarding and `/chat` seed the fictitious customer from `app/lib/mock-custo
 
 Open **Om Vekter’n → Tilbakestill alle demodata** to restore the default customer and policy choices, reset the onboarding progress, delete all conversations, and start a new empty conversation in one click. A visible confirmation explains what was reset. This replaces only this app's stored demo state, not other localStorage entries. Storage failures are shown in the dialog. Do not enter real personal data: chat messages and the current demo profile are sent to the configured AI provider.
 
-Coverage changes use the provider's function/tool-calling support. The server validates an explicit `update_mock_coverage` action, and the browser applies it together with the assistant's confirmation to the persisted state. Free-text replies never mutate the customer. The allowlist supports existing boolean policy options (for example, adding the rot/pest add-on to the house or removing the pest-control add-on from contents) and switching level within a Gjensidige product family (Hus/Hus Pluss, Barneforsikring Basis/Medium/Pluss, Reise/Reise Pluss). Policies without a `coverageId` (If, via the employer, business) cannot be changed. It deliberately does not invent Bil Pluss, prices, new policies, travel extensions, or other undefined flows. The provider/model must support Chat Completions tools.
+Coverage changes use the provider's function/tool-calling support. The server validates an explicit `update_mock_coverage` action, and the browser applies it together with the assistant's confirmation to the persisted state. Free-text replies never mutate the customer. The allowlist supports existing boolean policy options, Figma car switches with deterministic fictitious prices, and level changes within the house/child/travel product families. Employer-paid travel remains locked. New purchases and travel extensions are not supported. The provider/model must support Chat Completions tools.
 
 Future flows should extend the `MockAction` union and `applyMockAction` in `app/lib/mock-actions.ts`, the tool schema/instructions in `ai.server.ts`, and the customer shape/validation when needed. Keep mutations deterministic and validate them on both the server and client. Bump/migrate the stored state version when its shape changes. These actions change only fictitious local data, never real insurance agreements.
 

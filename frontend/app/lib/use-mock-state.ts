@@ -26,7 +26,11 @@ export function useMockState() {
       if (stored) {
         const parsed: unknown = JSON.parse(stored)
         if (isMockState(parsed)) initial = parsed
-        else setStorageError('Lagrede demodata var ugyldige og er tilbakestilt.')
+        else {
+          const migrated = migrateLegacyState(parsed)
+          if (migrated) initial = migrated
+          else setStorageError('Lagrede demodata var ugyldige og er tilbakestilt.')
+        }
       } else if (legacy) {
         initial = migrateLegacyState(JSON.parse(legacy)) ?? initial
       }

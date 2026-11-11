@@ -49,7 +49,7 @@ function deriveOnboarding({ firstName, employment, insurances, gapAnalysis }: Mo
 
 type OnboardingData = ReturnType<typeof deriveOnboarding>
 
-const stepHref = (step: number) => `/?steg=${step}`
+const stepHref = (step: number) => `/onboarding?steg=${step}`
 
 function parseStep(value: string | null) {
   const step = Number.parseInt(value ?? '', 10)
@@ -60,12 +60,14 @@ export default function Onboarding() {
   const [searchParams] = useSearchParams()
   const step = parseStep(searchParams.get('steg'))
   // Demo state lives in localStorage, so it is only available after hydration.
-  const { state, setState } = useMockState()
+  const { state, setState, storageError } = useMockState()
 
-  if (step === 1) return <Splash />
-  if (step === 2) return <Intro />
-  if (!state) return <Loading step={step} />
+  // Surface persistence problems on every step, including the introductory ones.
+  const content = step === 1 ? <Splash /> : step === 2 ? <Intro /> : !state ? <Loading step={step} /> : <OnboardingStep step={step} state={state} setState={setState} />
+  return <>{storageError && <p role="alert" className="vekter-theme px-7 py-3 text-sm text-destructive">{storageError}</p>}{content}</>
+}
 
+function OnboardingStep({ step, state, setState }: { step: number; state: MockState; setState: ReturnType<typeof useMockState>['setState'] }) {
   const data = deriveOnboarding(state.customer)
   switch (step) {
     case 3: return <Priorities saved={state.onboarding.priorities} onChange={(priorities) => setState((current) => current && ({ ...current, onboarding: { ...current.onboarding, priorities } }))} />
@@ -101,7 +103,9 @@ const sunrise = (amberAt: number): CSSProperties => ({
 function Screen({ className, style, fixedHeight = false, children }: { className?: string; style?: CSSProperties; fixedHeight?: boolean; children: ReactNode }) {
   return (
     <div className={cn('vekter-theme', fixedHeight ? 'h-dvh' : 'min-h-dvh')} style={style}>
-      <div className={cn('mx-auto flex w-full max-w-[430px] flex-col', fixedHeight ? 'h-dvh' : 'min-h-dvh', className)}>{children}</div>
+      <div className="lg:min-h-dvh">
+        <main className={cn('mx-auto flex w-full max-w-[430px] flex-col lg:max-w-3xl lg:px-12', fixedHeight ? 'h-dvh' : 'min-h-dvh', className)}>{children}</main>
+      </div>
     </div>
   )
 }
@@ -378,7 +382,7 @@ function Done({ firstName, onFinish }: { firstName: string; onFinish: () => void
         <p className="text-foreground/85">Fra nå passer jeg på. Jeg sier fra når livet endrer seg, og du bestemmer alltid.</p>
       </div>
       <div className="px-7 pb-11">
-        <StepLink to="/chat" onClick={onFinish}>Gå til oversikten</StepLink>
+        <StepLink to="/" onClick={onFinish}>Gå til oversikten</StepLink>
       </div>
     </Screen>
   )

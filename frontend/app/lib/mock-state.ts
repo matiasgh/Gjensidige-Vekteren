@@ -61,11 +61,11 @@ export function isMockState(value: unknown): value is MockState {
   return state.version === 2 && isMockCustomer(state.customer) && hasValidConversations(state) && isOnboardingState(state.onboarding)
 }
 
-// v1 stored the previous demo customer (Ola). Conversations are kept; the
-// customer is replaced by the Kari seed, which the stored data overrides in the prompt.
+// Previous branches used different customer shapes. Keep valid conversations
+// and onboarding preferences, but replace incompatible policy data with the shared seed.
 export function migrateLegacyState(value: unknown): MockState | null {
   if (!value || typeof value !== 'object') return null
-  const legacy = value as { version?: unknown; conversations: MockConversation[]; activeConversationId: string }
-  if (legacy.version !== 1 || !hasValidConversations(legacy)) return null
-  return { ...createDefaultState(), conversations: legacy.conversations, activeConversationId: legacy.activeConversationId }
+  const legacy = value as { version?: unknown; conversations: MockConversation[]; activeConversationId: string; onboarding?: unknown }
+  if ((legacy.version !== 1 && legacy.version !== 2) || !hasValidConversations(legacy)) return null
+  return { ...createDefaultState(), conversations: legacy.conversations, activeConversationId: legacy.activeConversationId, onboarding: isOnboardingState(legacy.onboarding) ? legacy.onboarding : createDefaultOnboarding() }
 }

@@ -1,3 +1,4 @@
+import { carMonthlyPrice } from './mock-actions'
 export type InsuranceProvider = 'Gjensidige' | 'If' | 'Via jobb – Arnesen Bygg AS'
 export type InsuranceCategory = 'Hus og innbo' | 'Bil' | 'Reise' | 'Familie og barn' | 'Bedrift'
 
@@ -11,8 +12,17 @@ export type MockInsurance = {
   category: InsuranceCategory
   provider: InsuranceProvider
   coverage: string
-  coverageId?: string
+  coverageId: string
+  monthlyPriceNok: number
+  displayName: string
+  employer?: string
+  vehicle?: string
+  renewalDate?: string
+  includes?: string[]
+  excludes?: string[]
   coverageSummary?: CoverageSummary
+  collisionDeductibleNok?: number
+  maxTripDays?: number
   registrationNumber?: string
   optionalCoverages?: Record<string, boolean>
   optionalCoverageDetails?: Record<string, OptionalCoverageDetail>
@@ -68,6 +78,9 @@ export const mockCustomer: MockCustomer = {
       provider: 'Gjensidige',
       coverage: 'Hus',
       coverageId: 'building',
+      displayName: 'Hus',
+      monthlyPriceNok: 250,
+      includes: ['Brann-, vann- og naturskader på bygningen', 'Bekjempelse av mus og rotter', 'Ansvar og rettshjelp'],
       address: 'Furuvegen 14, 2318 Hamar',
       optionalCoverages: { rotAndPestAddon: false },
       note: 'Tillegget for råtesopp og skadeinsekter er ikke valgt',
@@ -78,6 +91,9 @@ export const mockCustomer: MockCustomer = {
       provider: 'Gjensidige',
       coverage: 'Innbo Pluss',
       coverageId: 'contents-plus',
+      displayName: 'Innbo',
+      monthlyPriceNok: 160,
+      includes: ['Brann- og vannskader på innbo', 'Tyveri og uhellsskader på innbo', 'Ansvar og rettshjelp'],
       insuredPeople: ['Kari Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
       address: 'Furuvegen 14, 2318 Hamar',
       insuredAmountNok: 1500000,
@@ -95,18 +111,25 @@ export const mockCustomer: MockCustomer = {
     {
       type: 'Bilforsikring',
       category: 'Bil',
-      provider: 'If',
+      provider: 'Gjensidige',
       coverage: 'Kasko',
       registrationNumber: 'EL 48213',
-      coverageSummary: {
-        basis: fictionalSummary,
-        includes: ['Ansvar ved skade på andre', 'Brann, tyveri og glass', 'Kollisjon og hærverk på egen bil', 'Veihjelp i Norge'],
-        excludes: ['Leiebil ved skade', 'Bagasje og personlige ting i bilen'],
-      },
+      coverageId: 'car-kasko',
+      displayName: 'Bil',
+      monthlyPriceNok: 290,
+      vehicle: 'Volvo XC60',
+      renewalDate: '1. mars',
+      collisionDeductibleNok: 6000,
+      optionalCoverages: { partial: true, collision: true, roadside: true, rentalCar: false, puncture: false },
     },
     {
       type: 'Reiseforsikring',
       category: 'Reise',
+      coverageId: 'travel-work',
+      displayName: 'Reise',
+      employer: 'Arnesen Bygg AS',
+      monthlyPriceNok: 0,
+      maxTripDays: 45,
       provider: 'Via jobb – Arnesen Bygg AS',
       coverage: 'Kollektiv reiseforsikring for ansatte',
       insuredPeople: ['Kari Haugen'],
@@ -122,6 +145,9 @@ export const mockCustomer: MockCustomer = {
       provider: 'Gjensidige',
       coverage: 'Barneforsikring – Medium',
       coverageId: 'child-medium',
+      displayName: 'Familie og barn',
+      monthlyPriceNok: 120,
+      includes: ['Økonomisk støtte ved alvorlig sykdom og ulykke', 'Uførepensjon etter avtalens vilkår', 'Helsehjelp for barna'],
       insuredPeople: ['Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
     },
     {
@@ -130,6 +156,9 @@ export const mockCustomer: MockCustomer = {
       provider: 'Gjensidige',
       coverage: 'Småbedrift',
       company: 'Haugen Interiør AS',
+      coverageId: 'business',
+      displayName: 'Bedrift',
+      monthlyPriceNok: 80,
       coverageSummary: {
         basis: fictionalSummary,
         includes: ['Ansvar overfor kunder', 'Utstyr og varer på eget lager', 'Rettshjelp ved tvist med kunder'],
@@ -165,6 +194,7 @@ export const coverageLevels: Record<string, string>[] = [
 
 // Labels for the boolean optionalCoverages the demo can toggle.
 export const optionLabels: Record<string, string> = {
+  partial: 'Delkasko', collision: 'Kasko', roadside: 'Veihjelp', rentalCar: 'Leiebil', puncture: 'Punkteringsdekning',
   rotAndPestAddon: 'Tillegg for råtesopp og skadeinsekter',
   extendedMobileInsurance: 'Utvidet mobilforsikring',
   increasedBicycleTheftLimit: 'Økt grense for sykkeltyveri',
@@ -202,6 +232,8 @@ export function isMockCustomer(value: unknown): value is MockCustomer {
     && customer.insurances.every((insurance, index) => {
       const seed = mockCustomer.insurances[index]
       if (insurance.type !== seed.type || insurance.category !== seed.category || insurance.provider !== seed.provider) return false
+      if (insurance.employer !== seed.employer || insurance.monthlyPriceNok < 0) return false
+      if (insurance.coverageId === 'car-kasko' && (insurance.monthlyPriceNok !== carMonthlyPrice(insurance.optionalCoverages!) || (insurance.optionalCoverages!.collision && !insurance.optionalCoverages!.partial))) return false
       const levels = levelsFor(seed.coverageId) ?? (seed.coverageId === undefined ? undefined : { [seed.coverageId]: seed.coverage })
       if (!levels) return insurance.coverage === seed.coverage
       return insurance.coverageId !== undefined && Object.hasOwn(levels, insurance.coverageId) && insurance.coverage === levels[insurance.coverageId]

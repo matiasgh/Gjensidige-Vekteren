@@ -1,8 +1,7 @@
 import { cn } from '~/lib/utils'
 
-/** The Vekter'n guard illustration, exported from Figma (public/vektern.svg). */
 export function AssistantMark({ className }: { className?: string }) {
-  return <img src="/vektern.svg" alt="" aria-hidden="true" className={cn('inline-block size-10 shrink-0 rounded-full', className)} />
+  return <img src="/images/vekter-mark.svg" alt="" aria-hidden="true" className={cn('inline-block size-10 shrink-0', className)} />
 }
 
 export function AssistantIdentity({ className, status = 'På vakt' }: { className?: string; status?: string | null }) {

@@ -48,30 +48,31 @@
   --radius: 0.75rem;
 }
 
-/* Scoped prototype palette: visual estimates, not exported Figma color variables. */
+/* Scoped prototype palette from the Figma home and policy screens. */
 .vekter-theme {
-  --background: #0c0e35;
+  --background: #090c33;
   --foreground: #ffffff;
-  --card: #1b205b;
+  --card: #1a2160;
   --card-foreground: #ffffff;
   --popover: #1b205b;
   --popover-foreground: #ffffff;
-  --primary: #fbd047;
+  --primary: #f7c948;
   --primary-foreground: #0c0e35;
   --secondary: #282f6b;
   --secondary-foreground: #ffffff;
   --muted: #20265e;
-  --muted-foreground: #bec5e2;
+  --muted-foreground: #bac3d9;
   --accent: #303976;
   --accent-foreground: #ffffff;
   --destructive: #ff9aab;
-  --border: #414b88;
+  --border: #2b3475;
   --input: #3c4886;
   --ring: #fbd047;
   --radius: 0.5rem;
+  --employer: #8fb4ff;
   color-scheme: dark;
   color: var(--foreground);
-  background: linear-gradient(155deg, var(--background), #202762);
+  background: linear-gradient(to bottom, var(--background), #1f2766);
 }
 
 @layer base {
@@ -82,6 +83,12 @@
   outline: 3px solid var(--ring);
   outline-offset: 3px;
 }
+
+.policy-screen { min-height: calc(100dvh - 48px); }
+.policy-eyebrow { color: #8e9ad0; font-size: 12px; font-weight: 700; letter-spacing: .96px; text-transform: uppercase; line-height: 14px; }
+.policy-switch [data-slot="switch-thumb"] { background: white; }
+.policy-switch [data-state="checked"] [data-slot="switch-thumb"] { background: var(--background); }
+.policy-switch-required [data-slot="switch"] { opacity: 1; background: #8e9ad0; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
