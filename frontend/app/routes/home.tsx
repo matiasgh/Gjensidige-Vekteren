@@ -35,6 +35,7 @@ function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const isCar = insurance.coverageId === 'car-kasko'
+  const canEditCar = isCar && insurance.provider === 'Gjensidige' && !insurance.employer
   const isWork = !!insurance.employer
   const price = isCar ? carMonthlyPrice(options) : insurance.monthlyPriceNok
   const dirty = Object.keys(options).some((key) => options[key] !== insurance.optionalCoverages?.[key])
@@ -63,12 +64,12 @@ function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave
       <section aria-labelledby="car-coverages" className="w-full">
         <h2 id="car-coverages" className="policy-eyebrow mb-3.5">Dekninger</h2>
         <CoverageRow title="Ansvar" description="Påkrevd ved lov" checked disabled className="policy-switch policy-switch-required" />
-        {carCoverageOptions.map(({ option, title, price: optionPrice }) => <CoverageRow key={option} title={title} description={`kr ${optionPrice} / mnd`} checked={options[option]} className="policy-switch" onCheckedChange={(enabled) => {
+        {carCoverageOptions.map(({ option, title, price: optionPrice }) => <CoverageRow key={option} title={title} description={`kr ${optionPrice} / mnd`} checked={options[option]} disabled={!canEditCar} className="policy-switch" onCheckedChange={(enabled) => {
           setOptions((current) => ({ ...current, [option]: enabled, ...(option === 'partial' && !enabled ? { collision: false } : {}), ...(option === 'collision' && enabled ? { partial: true } : {}) }))
           setNotice('')
         }} />)}
       </section>
-      <PolicyNote>Veihjelp har du ikke brukt på 3 år, men den er billig. Leiebil trenger du kanskje ikke.</PolicyNote>
+      {canEditCar ? <PolicyNote>Veihjelp har du ikke brukt på 3 år, men den er billig. Leiebil trenger du kanskje ikke.</PolicyNote> : <PolicyNote locked>Bilforsikringen er hos {insurance.provider}. Kontakt selskapet for å endre dekningene.</PolicyNote>}
     </> : <>
       {(insurance.coverageSummary?.includes ?? insurance.includes) && <CoverageList title="Dekker" items={insurance.coverageSummary?.includes ?? insurance.includes!} />}
       {(insurance.coverageSummary?.excludes ?? insurance.excludes) && <CoverageList title="Dekker ikke" items={insurance.coverageSummary?.excludes ?? insurance.excludes!} excluded />}
@@ -80,7 +81,7 @@ function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave
     {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede demoprofilen.</p>}
-    {isCar && <Button onClick={save} className={actionClass}>Lagre endringer</Button>}
+    {canEditCar && <Button onClick={save} className={actionClass}>Lagre endringer</Button>}
     <Button asChild variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}><Link to={askUrl}>Spør Vekter’n om {isCar ? 'bilforsikringen' : isWork ? 'reisen' : 'forsikringen'}</Link></Button>
     {isWork && <Button asChild variant="outline" className={`${actionClass} border-[#7f8bc0] bg-transparent`}><Link to={`/chat?question=${encodeURIComponent('Hvilken ekstra reiseforsikring kan jeg vurdere for familien, siden jobbens avtale bare dekker meg?')}`}>Se ekstra dekning for familien</Link></Button>}
   </main>

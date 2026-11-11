@@ -111,7 +111,7 @@ export const mockCustomer: MockCustomer = {
     {
       type: 'Bilforsikring',
       category: 'Bil',
-      provider: 'If',
+      provider: 'Gjensidige',
       coverage: 'Kasko',
       registrationNumber: 'EL 48213',
       coverageId: 'car-kasko',
@@ -121,11 +121,6 @@ export const mockCustomer: MockCustomer = {
       renewalDate: '1. mars',
       collisionDeductibleNok: 6000,
       optionalCoverages: { partial: true, collision: true, roadside: true, rentalCar: false, puncture: false },
-      coverageSummary: {
-        basis: fictionalSummary,
-        includes: ['Ansvar ved skade på andre', 'Brann, tyveri og glass', 'Kollisjon og hærverk på egen bil', 'Veihjelp i Norge'],
-        excludes: ['Leiebil ved skade', 'Bagasje og personlige ting i bilen'],
-      },
     },
     {
       type: 'Reiseforsikring',

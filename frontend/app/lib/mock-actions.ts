@@ -10,6 +10,9 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
   const insurance = next.insurances.find((item) => item.coverageId === action.coverageId)
   if (!insurance) throw new Error('Forsikringen finnes ikke i kundeprofilen.')
   if (insurance.employer) throw new Error('Avtalen styres av arbeidsgiveren din og kan ikke endres her.')
+  if (insurance.category === 'Bil' && insurance.provider !== 'Gjensidige') {
+    throw new Error('Bilforsikringen er hos et annet selskap. Dekningene kan bare endres hos selskapet som leverer forsikringen.')
+  }
 
   switch (action.type) {
     case 'set-coverage-level': {
