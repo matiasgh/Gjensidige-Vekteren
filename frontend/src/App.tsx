@@ -1,3 +1,4 @@
+import { useChat } from '@ai-sdk/react'
 import { useRef, useState } from 'react'
 import { ArrowRight, ArrowUp, CarFront, CircleHelp, House, MessageCircle, Plus, ShieldCheck, Sparkles, Umbrella, X } from 'lucide-react'
 
@@ -25,13 +26,17 @@ function App() {
   const [message, setMessage] = useState('')
   const [showInfo, setShowInfo] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const { messages, sendMessage, setMessages, status, error } = useChat()
+  const isLoading = status === 'submitted' || status === 'streaming'
 
-  function chooseSuggestion(question: string) {
-    setMessage(question)
-    inputRef.current?.focus()
+  function send(text: string) {
+    if (!text.trim() || isLoading) return
+    sendMessage({ text })
+    setMessage('')
   }
 
   function newConversation() {
+    setMessages([])
     setMessage('')
     inputRef.current?.focus()
   }
@@ -76,12 +81,23 @@ function App() {
 
         {showInfo && (
           <div role="status" className="mx-5 mt-4 flex items-start justify-between gap-4 rounded-xl border border-[#cce4ef] bg-[#edf8fd] p-4 text-sm leading-6 text-[#315769] sm:mx-8">
-            <p>Vekteren er en prototype laget for Gjensidige-hackathonet. Chat og AI-svar kommer senere.</p>
+            <p>Vekteren er en prototype laget for Gjensidige-hackathonet. Svarene er AI-generert og kan inneholde feil.</p>
             <button type="button" onClick={() => setShowInfo(false)} aria-label="Lukk informasjon" className="shrink-0 rounded p-1"><X size={17} /></button>
           </div>
         )}
 
         <main className="flex flex-1 flex-col px-5 sm:px-8">
+          {messages.length > 0 ? (
+          <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col gap-4 py-8">
+            {messages.map((m) => (
+              <div key={m.id} className={m.role === 'user' ? 'ml-auto max-w-[85%] rounded-2xl bg-[#0075ad] px-4 py-3 text-sm leading-6 text-white' : 'mr-auto max-w-[85%] rounded-2xl border border-[#e2e9ee] bg-white px-4 py-3 text-sm leading-6'}>
+                <p className="whitespace-pre-wrap">{m.parts.map((part) => (part.type === 'text' ? part.text : '')).join('')}</p>
+              </div>
+            ))}
+            {status === 'submitted' && <p className="text-sm text-[#7b8795]">Vekteren tenker ...</p>}
+            {error && <p className="text-sm text-red-700">Noe gikk galt. Prøv igjen.</p>}
+          </div>
+          ) : (
           <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col justify-center py-12 sm:py-16">
             <div className="mx-auto max-w-[600px] text-center">
               <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-[#dceff8] sm:h-24 sm:w-24">
@@ -100,7 +116,7 @@ function App() {
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {suggestions.map(({ icon: Icon, title, question }) => (
-                  <button key={title} type="button" onClick={() => chooseSuggestion(question)} className="group flex min-h-[92px] items-center gap-4 rounded-2xl border border-[#e2e9ee] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#a8d1e4] hover:shadow-[0_8px_24px_rgba(22,67,92,0.06)]">
+                  <button key={title} type="button" onClick={() => send(question)} className="group flex min-h-[92px] items-center gap-4 rounded-2xl border border-[#e2e9ee] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#a8d1e4] hover:shadow-[0_8px_24px_rgba(22,67,92,0.06)]">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#edf7fb] text-[#0878aa]"><Icon size={20} strokeWidth={1.6} /></span>
                     <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#638090]">{title}</span><span className="mt-1 block text-sm font-medium leading-5">{question}</span></span>
                     <ArrowRight size={17} className="shrink-0 text-[#9eb0bb] transition group-hover:translate-x-1 group-hover:text-[#0075ad]" />
@@ -109,17 +125,18 @@ function App() {
               </div>
             </div>
           </div>
+          )}
 
           <div className="mx-auto w-full max-w-[780px] pb-6 sm:pb-8">
             <div className="rounded-2xl border border-[#dce5eb] bg-white p-3 shadow-[0_8px_32px_rgba(22,58,80,0.06)] sm:p-4">
               <label htmlFor="message" className="sr-only">Skriv en melding</label>
-              <textarea ref={inputRef} id="message" rows={2} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Skriv spørsmålet ditt her ..." className="block min-h-[56px] w-full resize-none bg-transparent px-1 py-1 text-sm leading-6 text-navy outline-none placeholder:text-[#9aa8b2]" />
+              <textarea ref={inputRef} id="message" rows={2} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(message) } }} placeholder="Skriv spørsmålet ditt her ..." className="block min-h-[56px] w-full resize-none bg-transparent px-1 py-1 text-sm leading-6 text-navy outline-none placeholder:text-[#9aa8b2]" />
               <div className="mt-2 flex items-center justify-between gap-3 border-t border-[#f0f3f5] pt-3">
                 <span className="flex items-center gap-2 text-xs text-[#91a0ab]"><Sparkles size={15} /> Vekteren AI</span>
-                <button type="button" disabled aria-label="Send melding – kommer senere" title="Chat kommer senere" className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-xl bg-[#dce9ef] text-white"><ArrowUp size={19} strokeWidth={2} /></button>
+                <button type="button" onClick={() => send(message)} disabled={!message.trim() || isLoading} aria-label="Send melding" className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0075ad] text-white transition disabled:cursor-not-allowed disabled:bg-[#dce9ef]"><ArrowUp size={19} strokeWidth={2} /></button>
               </div>
             </div>
-            <p className="mt-3 text-center text-xs leading-5 text-[#8d9ba7]">Chat og AI-svar kommer senere</p>
+            <p className="mt-3 text-center text-xs leading-5 text-[#8d9ba7]">Vekteren kan ta feil. Sjekk viktig informasjon.</p>
           </div>
         </main>
       </div>
