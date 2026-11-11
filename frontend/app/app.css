@@ -1,4 +1,94 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: #f6f8fa;
+  --foreground: #090c33;
+  --card: #ffffff;
+  --card-foreground: #090c33;
+  --popover: #ffffff;
+  --popover-foreground: #090c33;
+  --primary: #005aa4;
+  --primary-foreground: #ffffff;
+  --secondary: #e6f3fa;
+  --secondary-foreground: #090c33;
+  --muted: #edf2f6;
+  --muted-foreground: #586878;
+  --accent: #e6f3fa;
+  --accent-foreground: #090c33;
+  --destructive: #b42332;
+  --border: #dce5eb;
+  --input: #dce5eb;
+  --ring: #1685be;
+  --radius: 0.75rem;
+}
+
+/* Scoped prototype palette: visual estimates, not exported Figma color variables. */
+.vekter-theme {
+  --background: #0c0e35;
+  --foreground: #ffffff;
+  --card: #1b205b;
+  --card-foreground: #ffffff;
+  --popover: #1b205b;
+  --popover-foreground: #ffffff;
+  --primary: #fbd047;
+  --primary-foreground: #0c0e35;
+  --secondary: #282f6b;
+  --secondary-foreground: #ffffff;
+  --muted: #20265e;
+  --muted-foreground: #bec5e2;
+  --accent: #303976;
+  --accent-foreground: #ffffff;
+  --destructive: #ff9aab;
+  --border: #414b88;
+  --input: #3c4886;
+  --ring: #fbd047;
+  --radius: 0.5rem;
+  color-scheme: dark;
+  color: var(--foreground);
+  background: linear-gradient(155deg, var(--background), #202762);
+}
+
+@layer base {
+  * { border-color: var(--border); }
+}
+
+.vekter-theme :focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 @font-face {
   font-family: Gjensidige Sans;

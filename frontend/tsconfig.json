@@ -2,6 +2,8 @@
   "include": ["**/*", ".react-router/types/**/*"],
   "exclude": ["node_modules", "build"],
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "~/*": ["./app/*"] },
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["node", "vite/client"],
     "target": "ES2022",
