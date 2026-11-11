@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
 import { ArrowRight, Bell, Briefcase, CarFront, Check, Circle, Eye, Hand, House, Plus } from 'lucide-react'
 import type { Route } from './+types/onboarding'
 import { mockCustomer } from '~/lib/mock-customer.server'
@@ -87,8 +87,8 @@ const Progress = ({ step }: { step: number }) => <StepProgress value={step - 1} 
 
 const fadeUp = 'animate-in fade-in slide-in-from-bottom-2 duration-300'
 
-function StepLink({ to, variant = 'default', className, children }: { to: string; variant?: 'default' | 'outline'; className?: string; children: ReactNode }) {
-  return <Button asChild variant={variant} className={cn('w-full text-base font-bold', className)}><Link to={to}>{children}</Link></Button>
+function StepLink({ to, variant = 'default', className, state, children }: { to: string; variant?: 'default' | 'outline'; className?: string; state?: unknown; children: ReactNode }) {
+  return <Button asChild variant={variant} className={cn('w-full text-base font-bold', className)}><Link to={to} state={state}>{children}</Link></Button>
 }
 
 function Splash() {
@@ -237,26 +237,39 @@ function ExistingInsurance({ sources }: { sources: LoaderData['sources'] }) {
       </div>
       <AdvisorNote className="text-muted-foreground">Du samtykker til hva jeg får lese, og kan trekke det tilbake når som helst.</AdvisorNote>
       <div className="flex-1" />
-      <StepLink to={stepHref(5)}>Fortsett</StepLink>
-      <Button asChild variant="link" className="self-center pb-5 text-muted-foreground hover:text-foreground"><Link to={stepHref(5)}>Hopp over for nå</Link></Button>
+      <StepLink to={stepHref(5)} state={READ_TERMS}>Fortsett</StepLink>
+      <Button asChild variant="link" className="self-center pb-5 text-muted-foreground hover:text-foreground"><Link to={stepHref(5)} state={READ_TERMS}>Hopp over for nå</Link></Button>
     </Screen>
   )
 }
 
+const READ_TERMS = { readTerms: true }
+const REDUCED_MOTION_HOLD_MS = 1000
+
+// Step 5 is a loading step: it moves on to step 6 by itself, but only when
+// the user just arrived from step 4. Back/refresh/deep links show the result.
 function ReadingTerms({ policies }: { policies: LoaderData['policies'] }) {
-  const [done, setDone] = useState(0)
+  const navigate = useNavigate()
+  const navigationType = useNavigationType()
+  const location = useLocation()
+  const autoAdvance = navigationType === 'PUSH' && (location.state as typeof READ_TERMS | null)?.readTerms === true
+  const [done, setDone] = useState(autoAdvance ? 0 : policies.length)
   const finished = done >= policies.length
 
-  // Visual tick-off only; moving on to step 6 always waits for the user.
   useEffect(() => {
-    if (finished) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (!autoAdvance) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (finished) {
+      const timer = setTimeout(() => navigate(stepHref(6)), reduced ? REDUCED_MOTION_HOLD_MS : TICK_MS + 300)
+      return () => clearTimeout(timer)
+    }
+    if (reduced) {
       setDone(policies.length)
       return
     }
     const timer = setTimeout(() => setDone((d) => d + 1), TICK_MS)
     return () => clearTimeout(timer)
-  }, [done, finished, policies.length])
+  }, [autoAdvance, done, finished, policies.length, navigate])
 
   return (
     <Screen className="items-center gap-[18px] px-7 pt-8 pb-[34px]">
@@ -278,9 +291,9 @@ function ReadingTerms({ policies }: { policies: LoaderData['policies'] }) {
       </div>
       <div className="flex-1" />
       <p className="text-center text-sm font-medium text-muted-foreground">Jeg sammenligner med skadedata for hus på din alder og din del av landet.</p>
-      {finished
-        ? <StepLink to={stepHref(6)} className={fadeUp}>Se hva jeg fant</StepLink>
-        : <Button type="button" disabled className="w-full text-base font-bold">Leser vilkårene …</Button>}
+      {!autoAdvance && (
+        <Button asChild variant="link" className="pb-1 text-muted-foreground hover:text-foreground"><Link to={stepHref(6)}>Se hva jeg fant</Link></Button>
+      )}
     </Screen>
   )
 }
