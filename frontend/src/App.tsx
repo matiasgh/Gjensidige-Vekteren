@@ -1,4 +1,3 @@
-import { useChat } from '@ai-sdk/react'
 import { useRef, useState } from 'react'
 import { ArrowRight, ArrowUp, CarFront, CircleHelp, House, MessageCircle, Plus, ShieldCheck, Sparkles, Umbrella, X } from 'lucide-react'
 
@@ -8,6 +7,8 @@ const suggestions = [
   { icon: House, title: 'Hjem', question: 'Hva er forskjellen på hus- og innboforsikring?' },
   { icon: ShieldCheck, title: 'Skade', question: 'Hvordan melder jeg en skade?' },
 ]
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
@@ -26,17 +27,36 @@ function App() {
   const [message, setMessage] = useState('')
   const [showInfo, setShowInfo] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const { messages, sendMessage, setMessages, status, error } = useChat()
-  const isLoading = status === 'submitted' || status === 'streaming'
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  function send(text: string) {
+  async function send(text: string) {
     if (!text.trim() || isLoading) return
-    sendMessage({ text })
+    const next: ChatMessage[] = [...messages, { role: 'user', content: text.trim() }]
+    setMessages(next)
     setMessage('')
+    setError('')
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: next }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? 'Noe gikk galt.')
+      setMessages([...next, { role: 'assistant', content: data.reply }])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Noe gikk galt.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   function newConversation() {
     setMessages([])
+    setError('')
     setMessage('')
     inputRef.current?.focus()
   }
@@ -89,13 +109,13 @@ function App() {
         <main className="flex flex-1 flex-col px-5 sm:px-8">
           {messages.length > 0 ? (
           <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col gap-4 py-8">
-            {messages.map((m) => (
-              <div key={m.id} className={m.role === 'user' ? 'ml-auto max-w-[85%] rounded-2xl bg-[#0075ad] px-4 py-3 text-sm leading-6 text-white' : 'mr-auto max-w-[85%] rounded-2xl border border-[#e2e9ee] bg-white px-4 py-3 text-sm leading-6'}>
-                <p className="whitespace-pre-wrap">{m.parts.map((part) => (part.type === 'text' ? part.text : '')).join('')}</p>
+            {messages.map((m, i) => (
+              <div key={i} className={m.role === 'user' ? 'ml-auto max-w-[85%] rounded-2xl bg-[#0075ad] px-4 py-3 text-sm leading-6 text-white' : 'mr-auto max-w-[85%] rounded-2xl border border-[#e2e9ee] bg-white px-4 py-3 text-sm leading-6'}>
+                <p className="whitespace-pre-wrap">{m.content}</p>
               </div>
             ))}
-            {status === 'submitted' && <p className="text-sm text-[#7b8795]">Vekteren tenker ...</p>}
-            {error && <p className="text-sm text-red-700">Noe gikk galt. Prøv igjen.</p>}
+            {isLoading && <p className="text-sm text-[#7b8795]">Vekteren tenker ...</p>}
+            {error && <p className="text-sm text-red-700">{error}</p>}
           </div>
           ) : (
           <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col justify-center py-12 sm:py-16">

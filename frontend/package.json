@@ -9,9 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^4.0.114",
-    "@ai-sdk/react": "^4.0.173",
-    "ai": "^7.0.169",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

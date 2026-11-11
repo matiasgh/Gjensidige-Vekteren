@@ -8,7 +8,7 @@ function apiDevServer(): Plugin {
   return {
     name: 'api-dev-server',
     configureServer(server) {
-      Object.assign(process.env, loadEnv(server.config.mode, process.cwd(), 'OPENAI_'))
+      Object.assign(process.env, loadEnv(server.config.mode, process.cwd(), 'AI_'))
       server.middlewares.use('/api/chat', async (req, res) => {
         const chunks: Buffer[] = []
         for await (const chunk of req) chunks.push(chunk)
