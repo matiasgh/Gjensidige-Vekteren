@@ -15,6 +15,16 @@ npm run start          # serve the build with react-router-serve (PORT, default 
 npm run typecheck
 ```
 
+### Routes
+
+| Route | What it is |
+| --- | --- |
+| `/` | Onboarding (7 steps, Figma "Vekter'n – prototype"). The step is in the URL: `/?steg=1` … `/?steg=7`. The default is 1, and invalid values are clamped. Everything except the chat is mocked. |
+| `/chat` | Chat with Vekter'n. "Gå til oversikten" in the last onboarding step leads here. |
+| `/api/chat` | Server-only resource route (POST) for the AI call. |
+
+The customer data (the Kari scenario, policies with `provider`, and the hardcoded `gapAnalysis`) lives in `app/lib/mock-customer.server.ts`. It is the single source of truth for both the onboarding and the chat.
+
 Any OpenAI-compatible provider works if you change `AI_BASE_URL` and `AI_MODEL`, for example OpenAI, Gemini (`https://generativelanguage.googleapis.com/v1beta/openai`), Groq (`https://api.groq.com/openai/v1`) or OpenRouter (`https://openrouter.ai/api/v1`).
 
 ### Deploy

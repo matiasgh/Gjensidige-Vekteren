@@ -4,9 +4,9 @@ import type { Route } from './+types/root'
 import './app.css'
 
 export const meta: Route.MetaFunction = () => [
-  { title: 'Vekteren – Gjensidige' },
+  { title: "Vekter'n – Gjensidige" },
   { name: 'description', content: 'Vekteren – en AI-assistent for Gjensidige-hackathonet.' },
-  { name: 'theme-color', content: '#f5f7fa' },
+  { name: 'theme-color', content: '#090c33' },
 ]
 
 export const links: Route.LinksFunction = () => [

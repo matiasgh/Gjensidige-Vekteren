@@ -15,6 +15,13 @@
 }
 
 @font-face {
+  font-family: Gjensidige Sans;
+  src: url("https://cdn.gjensidige.no/builders/core/fonts/GjensidigeSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
   font-family: Gjensidige Display;
   src: url("https://cdn.gjensidige.no/builders/core/fonts/GjensidigeDisplay-Medium.woff2") format("woff2");
   font-weight: 500;
@@ -25,14 +32,23 @@
   --color-navy: #090c33;
   --color-blue: #005aa4;
   --color-sky: #e6f3fa;
+  --color-navy-900: #1f2766;
+  --color-navy-800: #1a2160;
+  --color-navy-700: #2b3475;
+  --color-navy-600: #3b4a8c;
+  --color-lavender: #7f8bc0;
+  --color-mist: #bac3d9;
+  --color-mist-light: #d6ddee;
+  --color-sun: #f7c948;
+  --color-amber: #c97f1a;
   --font-sans: "Gjensidige Sans", Arial, sans-serif;
   --font-display: "Gjensidige Display", Georgia, serif;
 }
 
 :root {
   font-family: var(--font-sans);
-  color: var(--color-navy);
-  background: #f6f8fa;
+  color: #fff;
+  background: var(--color-navy);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -42,15 +58,30 @@ body {
   min-width: 320px;
 }
 
-button, textarea {
+button, textarea, input {
   font: inherit;
 }
 
-button:focus-visible, textarea:focus-visible, a:focus-visible {
-  outline: 3px solid #1685be;
+button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 3px solid var(--color-sun);
   outline-offset: 3px;
 }
 
+/* Pill inputs show focus on their wrapper (focus-within) instead. */
+input.pill-input:focus-visible {
+  outline: none;
+}
+
 ::selection {
-  background: #c8e9f8;
+  background: var(--color-sun);
+  color: var(--color-navy);
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-rise-in { animation: rise-in 0.35s ease-out both; }
 }
