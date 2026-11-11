@@ -23,7 +23,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function App() {
+export default function Home() {
   const [message, setMessage] = useState('')
   const [showInfo, setShowInfo] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -163,5 +163,3 @@ function App() {
     </div>
   )
 }
-
-export default App
