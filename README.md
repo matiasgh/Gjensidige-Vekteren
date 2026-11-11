@@ -19,15 +19,26 @@ npm run start          # serve the build with react-router-serve (PORT, default 
 npm run typecheck
 ```
 
+### Routes
+
+| Route | What it is |
+| --- | --- |
+| `/` | Onboarding (7 steps, Figma "Vekter'n – prototype"). The step is in the URL: `/?steg=1` … `/?steg=7`. The default is 1, and invalid values are clamped. Everything except the chat is mocked. |
+| `/chat` | Chat with Vekter'n. "Gå til oversikten" in the last onboarding step leads here. |
+| `/components` | Interactive catalog of the component library. |
+| `/api/chat` | Server-only resource route (POST) for the AI call. |
+
+The customer seed (the Kari scenario, policies with `provider`/`coverageSummary`, and the hardcoded `gapAnalysis`) lives in the client-safe `app/lib/mock-customer.ts`. The onboarding and the chat both read it from the persisted demo state below, so it is the single source of truth. Both screens are built from the component library (`app/components/ui` and `app/components/vekter`).
+
 Any OpenAI-compatible provider works if you change `AI_BASE_URL` and `AI_MODEL`, for example OpenAI, Gemini (`https://generativelanguage.googleapis.com/v1beta/openai`), Groq (`https://api.groq.com/openai/v1`) or OpenRouter (`https://openrouter.ai/api/v1`).
 
 ### Persistent demo state
 
-The home page seeds the fictitious customer from `app/lib/mock-customer.ts` on first use and stores the current customer, all conversations, and the selected conversation in browser localStorage under `vekteren.mock-state.v1`. Reloading restores that state; **Ny samtale** keeps previous conversations available in the sidebar (or conversation selector on mobile). Storage is local to the browser, not a server-side customer record. Invalid/unsupported stored state falls back to the defaults; storage failures are displayed rather than silently claiming persistence.
+The onboarding and `/chat` seed the fictitious customer from `app/lib/mock-customer.ts` on first use and store the current customer, all conversations, the selected conversation and the onboarding progress (`onboarding.completed` and the step 3 `priorities`) in browser localStorage under `vekteren.mock-state.v2`. Version 1 data (`vekteren.mock-state.v1`, previous demo customer) is migrated once: conversations are kept and the customer is replaced by the Kari seed. Reloading restores that state; **Ny samtale** keeps previous conversations available in the conversation selector. The step 3 priorities are sent to the AI as the customer's own stated priorities. Pages that need the state render a placeholder until it has been read after hydration. Storage is local to the browser, not a server-side customer record. Invalid/unsupported stored state falls back to the defaults; storage failures are displayed rather than silently claiming persistence.
 
-Open **Om Vekter’n → Tilbakestill alle demodata** to restore the default customer and policy choices, delete all conversations, and start a new empty conversation in one click. A visible confirmation explains what was reset. This replaces only this app's stored demo state, not other localStorage entries. Storage failures are shown in the dialog. Do not enter real personal data: chat messages and the current demo profile are sent to the configured AI provider.
+Open **Om Vekter’n → Tilbakestill alle demodata** to restore the default customer and policy choices, reset the onboarding progress, delete all conversations, and start a new empty conversation in one click. A visible confirmation explains what was reset. This replaces only this app's stored demo state, not other localStorage entries. Storage failures are shown in the dialog. Do not enter real personal data: chat messages and the current demo profile are sent to the configured AI provider.
 
-Coverage changes use the provider's function/tool-calling support. The server validates an explicit `update_mock_coverage` action, and the browser applies it together with the assistant's confirmation to the persisted state. Free-text replies never mutate the customer. The initial allowlist supports existing boolean policy options (for example, enabling puncture cover) and switching between Reise and Reise Pluss. It deliberately does not invent Bil Pluss, prices, new policies, travel extensions, or other undefined flows. The provider/model must support Chat Completions tools.
+Coverage changes use the provider's function/tool-calling support. The server validates an explicit `update_mock_coverage` action, and the browser applies it together with the assistant's confirmation to the persisted state. Free-text replies never mutate the customer. The allowlist supports existing boolean policy options (for example, adding the rot/pest add-on to the house or removing the pest-control add-on from contents) and switching level within a Gjensidige product family (Hus/Hus Pluss, Barneforsikring Basis/Medium/Pluss, Reise/Reise Pluss). Policies without a `coverageId` (If, via the employer, business) cannot be changed. It deliberately does not invent Bil Pluss, prices, new policies, travel extensions, or other undefined flows. The provider/model must support Chat Completions tools.
 
 Future flows should extend the `MockAction` union and `applyMockAction` in `app/lib/mock-actions.ts`, the tool schema/instructions in `ai.server.ts`, and the customer shape/validation when needed. Keep mutations deterministic and validate them on both the server and client. Bump/migrate the stored state version when its shape changes. These actions change only fictitious local data, never real insurance agreements.
 

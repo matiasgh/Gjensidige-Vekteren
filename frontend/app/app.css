@@ -105,6 +105,13 @@
 }
 
 @font-face {
+  font-family: Gjensidige Sans;
+  src: url("https://cdn.gjensidige.no/builders/core/fonts/GjensidigeSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
   font-family: Gjensidige Display;
   src: url("https://cdn.gjensidige.no/builders/core/fonts/GjensidigeDisplay-Medium.woff2") format("woff2");
   font-weight: 500;

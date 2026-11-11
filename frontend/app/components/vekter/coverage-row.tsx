@@ -17,8 +17,16 @@ export function CoverageRow({ title, description, className, ...props }: Coverag
   </div>
 }
 
-export function InsuranceRow({ icon, title, provider, price, onClick }: { icon: ReactNode; title: string; provider: string; price?: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="flex min-h-18 w-full items-center gap-3 rounded-sm border-b border-border/60 py-3 text-left transition-colors hover:bg-accent/50">
-    <span aria-hidden="true" className="text-muted-foreground [&>svg]:size-[22px]">{icon}</span><span className="flex-1"><span className="block font-medium">{title}</span><span className="block text-sm text-muted-foreground">{provider}</span></span><span className="text-sm">{price ?? '—'}</span><ChevronRight aria-hidden="true" className="size-[18px] text-muted-foreground" />
-  </button>
+type InsuranceRowProps = { icon: ReactNode; title: string; provider?: string; price?: string; trailing?: ReactNode; onClick?: () => void; className?: string }
+
+/** Clickable with `onClick` (price + chevron); static when omitted. `trailing` replaces the price/chevron slot. */
+export function InsuranceRow({ icon, title, provider, price, trailing, onClick, className }: InsuranceRowProps) {
+  const content = <>
+    <span aria-hidden="true" className="text-muted-foreground [&>svg]:size-[22px]">{icon}</span><span className="min-w-0 flex-1"><span className="block font-medium">{title}</span>{provider && <span className="block text-sm text-muted-foreground">{provider}</span>}</span>
+    {trailing ?? <><span className="text-sm">{price ?? '—'}</span>{onClick && <ChevronRight aria-hidden="true" className="size-[18px] text-muted-foreground" />}</>}
+  </>
+  const classes = cn('flex min-h-18 w-full items-center gap-3 rounded-sm border-b border-border/60 py-3 text-left', className)
+  return onClick
+    ? <button type="button" onClick={onClick} className={cn(classes, 'transition-colors hover:bg-accent/50')}>{content}</button>
+    : <div className={classes}>{content}</div>
 }
