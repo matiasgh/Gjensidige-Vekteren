@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: Gjensidige Sans;
+  src: url("https://cdn.gjensidige.no/builders/core/fonts/GjensidigeSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Gjensidige Sans;
+  src: url("https://cdn.gjensidige.no/builders/core/fonts/GjensidigeSans-Medium.woff2") format("woff2");
+  font-weight: 500 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Gjensidige Display;
+  src: url("https://cdn.gjensidige.no/builders/core/fonts/GjensidigeDisplay-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+
+@theme {
+  --color-navy: #090c33;
+  --color-blue: #005aa4;
+  --color-sky: #e6f3fa;
+  --font-sans: "Gjensidige Sans", Arial, sans-serif;
+  --font-display: "Gjensidige Display", Georgia, serif;
+}
+
+:root {
+  font-family: var(--font-sans);
+  color: var(--color-navy);
+  background: #f6f8fa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button, textarea {
+  font: inherit;
+}
+
+button:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 3px solid #1685be;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #c8e9f8;
+}
