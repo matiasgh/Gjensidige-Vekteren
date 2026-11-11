@@ -1,0 +1,61 @@
+import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router'
+import { ArrowLeft, CarFront, Check, House, Plane, Users } from 'lucide-react'
+import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
+import { Input } from '~/components/ui/input'
+import { Separator } from '~/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
+import { AdvisorNote, AssistantIdentity, ChatBubble, ChatComposer, CoverageRing, CoverageRow, InsuranceRow, StepProgress } from '~/components/vekter'
+
+export const meta = () => [{ title: 'Komponentbibliotek · Vekter’n' }]
+
+function Specimen({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return <Card className="min-w-0 border-border/60 bg-background/50 shadow-none"><CardHeader><CardTitle className="font-display text-xl">{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader><CardContent className="space-y-4">{children}</CardContent></Card>
+}
+
+function InsuranceExample() {
+  const [coverages, setCoverages] = useState({ delkasko: true, kasko: true, veihjelp: true, leiebil: false })
+  const [saved, setSaved] = useState(false)
+  const price = 65 + (coverages.delkasko ? 70 : 0) + (coverages.kasko ? 120 : 0) + (coverages.veihjelp ? 35 : 0) + (coverages.leiebil ? 45 : 0)
+  return <div className="mx-auto w-full max-w-[393px] rounded-2xl border border-border/60 bg-background/30 p-6">
+    <div className="mb-4 flex justify-between"><span className="text-sm text-muted-foreground">Eksempel · bilforsikring</span><Badge>Gjensidige</Badge></div>
+    <h2 className="font-display text-3xl">Bil · Volvo XC60</h2><p className="mt-3 text-5xl font-bold text-primary">kr {price} <span className="text-sm font-normal text-muted-foreground">/ mnd</span></p>
+    <p className="mt-5 text-sm text-muted-foreground">Egenandel kr 6 000 · Fornyes 1. mars</p><p className="mt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">Dekninger</p>
+    <CoverageRow title="Ansvar" description="Påkrevd ved lov" checked disabled />
+    {(['delkasko', 'kasko', 'veihjelp', 'leiebil'] as const).map((key) => <CoverageRow key={key} title={key[0].toUpperCase() + key.slice(1)} description={`kr ${{ delkasko: 70, kasko: 120, veihjelp: 35, leiebil: 45 }[key]} / mnd`} checked={coverages[key]} onCheckedChange={(checked) => { setCoverages({ ...coverages, [key]: checked }); setSaved(false) }} />)}
+    <AdvisorNote className="mt-4">Veihjelp har du ikke brukt på 3 år, men den er billig. Leiebil trenger du kanskje ikke.</AdvisorNote>
+    <Dialog><DialogTrigger asChild><Button className="mt-8 w-full">Lagre endringer</Button></DialogTrigger><DialogContent className="vekter-theme"><DialogHeader><DialogTitle>Godkjenn endringer</DialogTitle><DialogDescription>Dette er bare en demonstrasjon. Ingen forsikringsavtale blir endret.</DialogDescription></DialogHeader><p>Eksempelpris: kr {price} / mnd</p><DialogFooter><DialogClose asChild><Button variant="outline">Avbryt</Button></DialogClose><DialogClose asChild><Button onClick={() => setSaved(true)}>Godkjenn eksempel</Button></DialogClose></DialogFooter></DialogContent></Dialog>
+    <p role="status" className="mt-3 min-h-5 text-center text-sm text-muted-foreground">{saved ? 'Eksempel lagret lokalt. Ingen avtale er endret.' : 'Demodata · ikke et forsikringstilbud'}</p>
+  </div>
+}
+
+function ChatExample() {
+  const [messages, setMessages] = useState<string[]>([])
+  return <div className="space-y-4"><AssistantIdentity /><Separator /><ChatBubble role="user">Jeg skal til Thailand med familien. Er vi dekket?</ChatBubble><ChatBubble role="assistant">Jobbens reiseforsikring gjelder deg. Barna er ikke med på avtalen.</ChatBubble><AdvisorNote>Handlinger krever alltid at du godkjenner. Dette eksempelet kaller ikke AI-tjenesten.</AdvisorNote><div role="log" aria-label="Eksempelsamtale" className="max-h-64 space-y-3 overflow-y-auto">{messages.map((message, index) => <ChatBubble key={index} role="user">{message}</ChatBubble>)}</div><ChatComposer onSend={(message) => setMessages([...messages, message])} /></div>
+}
+
+export default function Components() {
+  const [step, setStep] = useState(2)
+  const [selected, setSelected] = useState('')
+  return <div className="vekter-theme min-h-screen">
+    <div className="mx-auto max-w-7xl px-5 py-10 sm:px-10">
+      <header className="mb-10 flex flex-wrap items-start justify-between gap-6"><div><Link to="/chat" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Til samtalerommet</Link><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Vekter’n · internt komponentbibliotek</p><h1 className="mt-3 font-display text-4xl sm:text-5xl">Én stemme. Felles byggeklosser.</h1><p className="mt-4 max-w-2xl leading-7 text-muted-foreground">shadcn/ui-primitiver med Vekter’n-tema og gjenbrukbare mønstre fra Figma-prototypen. Et arbeidsbibliotek, ikke ferdige forsikringsflyter.</p></div><Badge variant="outline">Prototype · v0.1</Badge></header>
+      <Tabs defaultValue="components"><TabsList className="mb-8"><TabsTrigger value="components">Komponenter</TabsTrigger><TabsTrigger value="patterns">Sammensatte mønstre</TabsTrigger><TabsTrigger value="tokens">Design tokens</TabsTrigger></TabsList>
+        <TabsContent value="components" className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <Specimen title="Handlinger" description="52px primærhandling, sekundærknapp og kompakte valg."><Button className="w-full">Kom i gang</Button><Button variant="outline" className="w-full">Ikke nå</Button><div className="flex flex-wrap gap-2"><Button size="sm" className="rounded-full"><Check /> Tre barn</Button><Button variant="outline" size="sm" className="rounded-full">Reiser mye</Button><Button disabled size="sm">Utilgjengelig</Button></div></Specimen>
+          <Specimen title="Fremdrift" description="Seks segmenter fra onboardingflyten."><StepProgress value={step} /><p className="text-sm text-muted-foreground">Steg {step} av 6</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={step === 1} onClick={() => setStep(step - 1)}>Tilbake</Button><Button size="sm" disabled={step === 6} onClick={() => setStep(step + 1)}>Fortsett</Button></div><AssistantIdentity /></Specimen>
+          <Specimen title="Felt og merker" description="Semantiske farger, feltetikett og tastaturfokus."><label htmlFor="policy" className="text-sm font-medium">Forsikringsselskap</label><Input id="policy" placeholder="Skriv navnet på selskapet" /><div className="flex flex-wrap gap-2"><Badge>Gjensidige</Badge><Badge variant="secondary">Via arbeidsgiver</Badge><Badge variant="outline">Prototype</Badge></div><AdvisorNote>Du bestemmer. Ingenting skjer uten ditt ja.</AdvisorNote></Specimen>
+          <Specimen title="Forsikringsliste" description="Klikkbare rader med leverandør og pris.">{[{ title: 'Hus og innbo', icon: <House />, provider: 'Gjensidige', price: 'kr 410' }, { title: 'Bil', icon: <CarFront />, provider: 'Gjensidige', price: 'kr 290' }, { title: 'Familie og barn', icon: <Users />, provider: 'Gjensidige', price: 'kr 120' }, { title: 'Reise', icon: <Plane />, provider: 'Via jobb' }].map((item) => <InsuranceRow key={item.title} {...item} onClick={() => setSelected(item.title)} />)}<p role="status" className="text-sm text-muted-foreground">{selected ? `${selected} valgt i eksempelet.` : 'Velg en forsikring.'}</p></Specimen>
+          <Specimen title="Dekningsring" description="Tilgjengelig prosentvis status, som én bue eller segmentert per forsikring."><CoverageRing value={100} className="mx-auto" /><CoverageRing value={60} segments={5} className="mx-auto" /><p className="text-center text-2xl font-bold">100 % dekket</p><p className="text-center text-sm text-muted-foreground">Eksempeldata · 5 forsikringer</p></Specimen>
+          <Specimen title="Samtale" description="Meldinger og sendefelt med Enter / Shift+Enter."><ChatExample /></Specimen>
+        </TabsContent>
+        <TabsContent value="patterns"><div className="grid items-start gap-8 md:grid-cols-2"><InsuranceExample /><Specimen title="Assistent i samtalen" description="Mønster med identitet, meldinger, råd og skrivefelt."><ChatExample /></Specimen></div></TabsContent>
+        <TabsContent value="tokens"><Specimen title="Temagrunnlag" description="Typografi og mål er lest fra Figma. Fargeverdiene er visuelle anslag og må bekreftes mot originalen."><div className="grid gap-4 sm:grid-cols-3">{['background', 'card', 'primary', 'secondary', 'muted', 'border'].map((token) => <div key={token} className="rounded-xl border p-4"><div className="mb-3 h-16 rounded-lg border" style={{ background: `var(--${token})` }} /><code className="text-sm">--{token}</code></div>)}</div><Separator /><h2 className="font-display text-3xl">Gjensidige Display</h2><p>Gjensidige Sans · brødtekst 16 / 24 · liten tekst 14 / 21</p><p className="text-sm text-muted-foreground">Mobilramme: 393px · sidemarg: 24–28px · primærknapp: 52px · bryter: 48 × 28px. Mellomrom og hjørner styres med Tailwind og semantiske CSS-variabler.</p></Specimen></TabsContent>
+      </Tabs>
+      <footer className="mt-12 border-t border-border/60 pt-6 text-sm leading-6 text-muted-foreground">Kilde: Figma «Demo – skisser», node 26:130. Vekter’n-illustrasjonen er eksportert fra Figma (public/vektern.svg). Denne ruten er en utviklerkatalog, ikke tilgangsbeskyttet.</footer>
+    </div>
+  </div>
+}
