@@ -18,6 +18,11 @@ Hvis noe ikke er oppgitt, si at du mangler informasjon.
 Kundens forsikringsliste er eneste kilde til hvilke forsikringer kunden har.
 Produktkatalogen beskriver både eksisterende produkter og produkter kunden kan søke om.
 Produktopplysningene er daterte sammendrag av offentlige Gjensidige-sider, ikke fiktive produktvilkår og ikke kundens fullstendige avtalevilkår.
+Unntaket er avtaler som uttrykkelig er merket som fiktive prototypescenarioer i katalogen. Disse må aldri fremstilles som faktiske produktvilkår.
+monthlyPriceNok og includes/excludes i kundeprofilen er fiktive prototypeopplysninger. Oppgitte priser er ikke tilbud.
+For bil er optionalCoverages.partial, collision og roadside gjeldende prototypevalg. Ikke påstå at en avslått dekning er aktiv bare fordi den er med i produktkatalogen. coverageId car-kasko er en stabil demoidentifikator, ikke bevis på at kasko er valgt.
+Delkasko, kasko og veihjelp som uavhengige brytere og tilhørende priser er en fiktiv forenkling fra prototypen, ikke Gjensidiges reelle produktstruktur. Å slå av delkasko slår også av kasko, og å slå på kasko aktiverer delkasko.
+Arbeidsgiveravtaler (employer) er låst. De kan ikke endres med verktøyet. Reiseforsikringen via jobb dekker bare kunden, ikke familien. Ekstra dekning for familien er et forslag, aldri en allerede kjøpt forsikring.
 De fiktive kundevalgene er kun demoopplysninger, ikke et faktisk forsikringsbevis.
 Forklar mulig dekning basert på sammendraget, men ikke gi en bindende bekreftelse på dekning eller skadeoppgjør.
 Opplys ved konkrete dekningsspørsmål at fullstendige avtalevilkår og hendelsesdetaljer må kontrolleres.
@@ -62,7 +67,7 @@ const coverageTool = {
         action: {
           anyOf: [
             { type: 'object', properties: { type: { const: 'set-coverage-level' }, coverageId: { type: 'string' }, targetCoverageId: { enum: ['travel-standard', 'travel-plus'] } }, required: ['type', 'coverageId', 'targetCoverageId'], additionalProperties: false },
-            { type: 'object', properties: { type: { const: 'set-coverage-option' }, coverageId: { type: 'string' }, option: { enum: ['rentalCar', 'puncture', 'extendedMobileInsurance', 'increasedBicycleTheftLimit'] }, enabled: { type: 'boolean' } }, required: ['type', 'coverageId', 'option', 'enabled'], additionalProperties: false },
+            { type: 'object', properties: { type: { const: 'set-coverage-option' }, coverageId: { type: 'string' }, option: { enum: ['partial', 'collision', 'roadside', 'rentalCar', 'puncture', 'extendedMobileInsurance', 'increasedBicycleTheftLimit'] }, enabled: { type: 'boolean' } }, required: ['type', 'coverageId', 'option', 'enabled'], additionalProperties: false },
           ],
         },
       },
@@ -104,7 +109,7 @@ export async function chat(messages: ChatMessage[], customer: MockCustomer): Pro
       const insurance = updated.insurances.find((item) => item.coverageId === (action.type === 'set-coverage-level' ? action.targetCoverageId : action.coverageId))!
       const description = action.type === 'set-coverage-level'
         ? insurance.coverage
-        : `${({ rentalCar: 'Leiebil', puncture: 'Punkteringsdekning', extendedMobileInsurance: 'Utvidet mobilforsikring', increasedBicycleTheftLimit: 'Økt grense for sykkeltyveri' } as Record<string, string>)[action.option]} ${action.enabled ? 'aktivert' : 'deaktivert'}`
+        : `${({ partial: 'Delkasko', collision: 'Kasko', roadside: 'Veihjelp', rentalCar: 'Leiebil', puncture: 'Punkteringsdekning', extendedMobileInsurance: 'Utvidet mobilforsikring', increasedBicycleTheftLimit: 'Økt grense for sykkeltyveri' } as Record<string, string>)[action.option]} ${action.enabled ? 'aktivert' : 'deaktivert'}${action.option === 'partial' && !action.enabled ? ' (kasko er også deaktivert)' : action.option === 'collision' && action.enabled ? ' (delkasko er også aktivert)' : ''}`
       return Response.json({
         reply: `Demoprofilen er oppdatert: ${insurance.type} – ${description}. Dette endrer bare lokale demodata, ikke en reell forsikringsavtale.\n\nMerk: Kundeprofilen og avtalevalgene er fiktive demodata. Produktinformasjonen er forenklet; fullstendige avtalevilkår gjelder.`,
         actions: [action],

@@ -19,6 +19,6 @@ export function CoverageRow({ title, description, className, ...props }: Coverag
 
 export function InsuranceRow({ icon, title, provider, price, onClick }: { icon: ReactNode; title: string; provider: string; price?: string; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="flex min-h-18 w-full items-center gap-3 rounded-sm border-b border-border/60 py-3 text-left transition-colors hover:bg-accent/50">
-    <span aria-hidden="true" className="text-muted-foreground [&>svg]:size-[22px]">{icon}</span><span className="flex-1"><span className="block font-medium">{title}</span><span className="block text-sm text-muted-foreground">{provider}</span></span><span className="text-sm">{price ?? '—'}</span><ChevronRight aria-hidden="true" className="size-[18px] text-muted-foreground" />
+    <span aria-hidden="true" className="[&>svg]:size-[22px]">{icon}</span><span className="flex-1"><span className="block font-bold">{title}</span><span className="flex items-center gap-1.5 text-sm text-muted-foreground"><span aria-hidden="true" className={cn('size-2 rounded-full', provider === 'Via jobb' ? 'bg-[var(--employer)]' : provider === 'If' ? 'bg-white' : 'bg-primary')} />{provider}</span></span><span className="text-sm">{price ?? '—'}</span><ChevronRight aria-hidden="true" className="size-[18px] text-muted-foreground" />
   </button>
 }

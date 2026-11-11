@@ -9,6 +9,7 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
   const next = structuredClone(customer)
   const insurance = next.insurances.find((item) => item.coverageId === action.coverageId)
   if (!insurance) throw new Error('Forsikringen finnes ikke i kundeprofilen.')
+  if (insurance.employer) throw new Error('Avtalen styres av arbeidsgiveren din og kan ikke endres her.')
 
   switch (action.type) {
     case 'set-coverage-level': {
@@ -25,11 +26,28 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
         throw new Error('Dette tilvalget er ikke definert i prototypen ennå.')
       }
       insurance.optionalCoverages[action.option] = action.enabled
+      if (insurance.coverageId === 'car-kasko') {
+        if (action.option === 'partial' && !action.enabled) insurance.optionalCoverages.collision = false
+        if (action.option === 'collision' && action.enabled) insurance.optionalCoverages.partial = true
+        insurance.monthlyPriceNok = carMonthlyPrice(insurance.optionalCoverages)
+      }
       break
     default:
       throw new Error('Ukjent endring i kundeprofilen.')
   }
   return next
+}
+
+// Fictitious prototype prices, not product quotes or real policy levels.
+export const carCoverageOptions = [
+  { option: 'partial', title: 'Delkasko', price: 70 },
+  { option: 'collision', title: 'Kasko', price: 120 },
+  { option: 'roadside', title: 'Veihjelp', price: 35 },
+  { option: 'rentalCar', title: 'Leiebil', price: 45 },
+] as const
+
+export function carMonthlyPrice(options: Record<string, boolean>) {
+  return 65 + carCoverageOptions.reduce((sum, { option, price }) => sum + (options[option] ? price : 0), 0)
 }
 
 export function isMockAction(value: unknown): value is MockAction {

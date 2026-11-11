@@ -3,13 +3,14 @@ import { createDefaultCustomer, isMockCustomer, type MockCustomer } from './mock
 export type ChatMessage = { role: 'user' | 'assistant'; content: string }
 export type MockConversation = { id: string; messages: ChatMessage[] }
 export type MockState = {
-  version: 1
+  version: 2
   customer: MockCustomer
   conversations: MockConversation[]
   activeConversationId: string
 }
 
 export const MOCK_STORAGE_KEY = 'vekteren.mock-state.v1'
+// Reuse the storage slot, but reset v1's unrelated customer through version 2 validation.
 
 export function createConversation(): MockConversation {
   return { id: crypto.randomUUID(), messages: [] }
@@ -17,7 +18,7 @@ export function createConversation(): MockConversation {
 
 export function createDefaultState(): MockState {
   const conversation = createConversation()
-  return { version: 1, customer: createDefaultCustomer(), conversations: [conversation], activeConversationId: conversation.id }
+  return { version: 2, customer: createDefaultCustomer(), conversations: [conversation], activeConversationId: conversation.id }
 }
 
 export function isChatMessage(value: unknown): value is ChatMessage {
@@ -29,7 +30,7 @@ export function isChatMessage(value: unknown): value is ChatMessage {
 export function isMockState(value: unknown): value is MockState {
   if (!value || typeof value !== 'object') return false
   const state = value as MockState
-  return state.version === 1 && isMockCustomer(state.customer)
+  return state.version === 2 && isMockCustomer(state.customer)
     && Array.isArray(state.conversations) && state.conversations.length > 0
     && state.conversations.every((conversation) => conversation && typeof conversation.id === 'string'
       && Array.isArray(conversation.messages) && conversation.messages.every(isChatMessage))

@@ -1,211 +1,145 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
-import { ArrowRight, CarFront, CircleHelp, House, LoaderCircle, MessageCircle, Plus, ShieldCheck, Umbrella } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { ArrowRight, BriefcaseBusiness, CarFront, Check, ChevronLeft, House, LockKeyhole, Plane, Users, X } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
-import { AdvisorNote, AssistantIdentity, AssistantMark, ChatBubble, ChatComposer } from '~/components/vekter'
-import { applyMockAction, isMockAction } from '~/lib/mock-actions'
-import { createConversation, createDefaultState, type ChatMessage } from '~/lib/mock-state'
+import { AssistantMark, CoverageRing, CoverageRow, InsuranceRow } from '~/components/vekter'
+import { applyMockAction, carCoverageOptions, carMonthlyPrice } from '~/lib/mock-actions'
+import type { MockInsurance } from '~/lib/mock-customer'
 import { useMockState } from '~/lib/use-mock-state'
+import ChatRoom from '~/components/vekter/chat-room'
 
-const suggestions = [
-  { icon: Umbrella, title: 'Reise', question: 'Hva dekker reiseforsikringen?' },
-  { icon: CarFront, title: 'Bil', question: 'Hva bør jeg vite om bilforsikring?' },
-  { icon: House, title: 'Hjem', question: 'Hva er forskjellen på hus- og innboforsikring?' },
-  { icon: ShieldCheck, title: 'Skade', question: 'Hvordan melder jeg en skade?' },
-]
+const money = (value: number) => value.toLocaleString('nb-NO')
+const icons = { 'contents-plus': House, 'car-kasko': CarFront, 'child-medium': Users, 'travel-work': Plane, 'business-if': BriefcaseBusiness }
+const policyOrder = ['contents-plus', 'car-kasko', 'child-medium', 'travel-work', 'business-if']
+const actionClass = 'w-full rounded-sm text-base font-bold whitespace-normal'
 
-const coverageOptionLabels: Record<string, string> = {
-  rentalCar: 'leiebil',
-  puncture: 'punkteringsdekning',
-  extendedMobileInsurance: 'utvidet mobilforsikring',
-  increasedBicycleTheftLimit: 'økt grense for sykkeltyveri',
+function CoverageList({ title, items, excluded = false }: { title: string; items: string[]; excluded?: boolean }) {
+  const Icon = excluded ? X : Check
+  return <section className="w-full" aria-label={title}>
+    <h2 className="policy-eyebrow">{title}</h2>
+    <ul className="mt-3.5">{items.map((item) => <li key={item} className="flex min-h-11 items-center gap-3 py-2.5"><Icon aria-hidden="true" className={`size-5 shrink-0 ${excluded ? 'text-destructive' : 'text-[#8ed8c0]'}`} strokeWidth={1.5} /><span>{item}</span></li>)}</ul>
+  </section>
 }
 
-export default function Home() {
-  const { state, setState, storageError } = useMockState()
-  const activeConversation = state?.conversations.find(({ id }) => id === state.activeConversationId)
-  const messages = activeConversation?.messages ?? []
-  const [isLoading, setIsLoading] = useState(false)
+function PolicyNote({ children, locked = false }: { children: ReactNode; locked?: boolean }) {
+  return <div className="flex w-full items-start gap-2.5 rounded-xl bg-card p-3.5 text-sm leading-5.5 text-[#d6ddee]">
+    {locked ? <LockKeyhole aria-hidden="true" className="size-[18px] shrink-0 text-primary" /> : <AssistantMark className="size-7.5" />}{children}
+  </div>
+}
+
+function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave: (options: Record<string, boolean>) => void }) {
+  const [options, setOptions] = useState({ ...insurance.optionalCoverages })
+  const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
-  const [conversation, setConversation] = useState(0)
-  const [resetNotice, setResetNotice] = useState('')
-  const pendingRef = useRef(false)
-  const logRef = useRef<HTMLDivElement>(null)
-  const composerRef = useRef<HTMLTextAreaElement>(null)
+  const isCar = insurance.coverageId === 'car-kasko'
+  const isWork = !!insurance.employer
+  const price = isCar ? carMonthlyPrice(options) : insurance.monthlyPriceNok
+  const dirty = Object.keys(options).some((key) => options[key] !== insurance.optionalCoverages?.[key])
+  const question = isCar ? 'Hva bør jeg vite om bilforsikringen min og tilvalgene mine?' : isWork ? 'Hva dekker reiseforsikringen min via jobb?' : `Hva dekker ${insurance.displayName.toLowerCase()}?`
+  const askUrl = `/chat?question=${encodeURIComponent(question)}`
 
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
-  }, [messages, isLoading, error])
-
-  async function requestReply(next: ChatMessage[]) {
-    if (pendingRef.current || !state) return
-    const conversationId = state.activeConversationId
-    pendingRef.current = true
-    setError('')
-    setIsLoading(true)
+  function save() {
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, customer: state.customer }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error ?? 'Noe gikk galt.')
-      if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error('Vekter’n svarte ikke. Prøv igjen.')
-      if (!Array.isArray(data.actions) || !data.actions.every(isMockAction)) throw new Error('Vekter’n returnerte en ugyldig endring. Ingen demodata er endret.')
-      const customer = data.actions.reduce(applyMockAction, state.customer)
-      setState((current) => current && ({
-        ...current,
-        customer,
-        conversations: current.conversations.map((item) => item.id === conversationId
-          ? { ...item, messages: [...next, { role: 'assistant', content: data.reply }] }
-          : item),
-      }))
+      onSave(options)
+      setError('')
+      setNotice('Endringene er lagret i demoprofilen. Ingen reell avtale er endret.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Noe gikk galt.')
-    } finally {
-      pendingRef.current = false
-      setIsLoading(false)
+      setError(err instanceof Error ? err.message : 'Kunne ikke lagre endringene.')
     }
   }
 
-  function send(text: string) {
-    if (!text.trim() || pendingRef.current || !state) return
-    const next: ChatMessage[] = [...messages, { role: 'user', content: text.trim() }]
-    setState({ ...state, conversations: state.conversations.map((item) => item.id === state.activeConversationId ? { ...item, messages: next } : item) })
-    void requestReply(next)
+  return <main className="policy-screen flex flex-col gap-3.5 px-6 pb-[max(30px,env(safe-area-inset-bottom))]">
+    <div className="flex min-h-6 items-center justify-between">
+      <Button asChild size="icon-sm" variant="ghost" className="-ml-2"><Link to="/" aria-label="Tilbake til hjem"><ChevronLeft className="size-6" /></Link></Button>
+      <Badge className={`rounded-full border-0 px-3 py-1 text-xs font-medium ${isWork ? 'bg-[var(--employer)] text-background' : insurance.provider === 'If' ? 'bg-white text-background' : ''}`}>{isWork ? `Via ${insurance.employer}` : insurance.provider}</Badge>
+    </div>
+    <h1 className={`font-display ${isCar ? 'text-[32px] leading-9' : 'text-4xl leading-10'}`}>{insurance.displayName}{isCar && ` · ${insurance.vehicle}`}</h1>
+    {isWork ? <p className="leading-6 text-muted-foreground">Betalt av arbeidsgiver · gjelder deg, opptil {insurance.maxTripDays} dager per reise</p> : <div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(price)}</p><span className="text-muted-foreground">/ mnd</span></div>}
+    {isCar ? <>
+      <p className="text-sm text-muted-foreground">Egenandel kr {money(insurance.collisionDeductibleNok ?? 0)} · Fornyes {insurance.renewalDate}</p>
+      <section aria-labelledby="car-coverages" className="w-full">
+        <h2 id="car-coverages" className="policy-eyebrow mb-3.5">Dekninger</h2>
+        <CoverageRow title="Ansvar" description="Påkrevd ved lov" checked disabled className="policy-switch policy-switch-required" />
+        {carCoverageOptions.map(({ option, title, price: optionPrice }) => <CoverageRow key={option} title={title} description={`kr ${optionPrice} / mnd`} checked={options[option]} className="policy-switch" onCheckedChange={(enabled) => {
+          setOptions((current) => ({ ...current, [option]: enabled, ...(option === 'partial' && !enabled ? { collision: false } : {}), ...(option === 'collision' && enabled ? { partial: true } : {}) }))
+          setNotice('')
+        }} />)}
+      </section>
+      <PolicyNote>Veihjelp har du ikke brukt på 3 år, men den er billig. Leiebil trenger du kanskje ikke.</PolicyNote>
+    </> : <>
+      {insurance.includes && <CoverageList title="Dekker" items={insurance.includes} />}
+      {insurance.excludes && <CoverageList title="Dekker ikke" items={insurance.excludes} excluded />}
+      {isWork && <PolicyNote locked>Dekningene kan ikke endres her. Avtalen styres av arbeidsgiveren din.</PolicyNote>}
+      {!isWork && <PolicyNote>Dette er en forenklet oversikt over en fiktiv demoavtale. Spør meg om du vil vite mer om dekningene.</PolicyNote>}
+    </>}
+    <div className="min-h-4 flex-1" />
+    {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede demoprofilen.</p>}
+    {isCar && <Button onClick={save} className={actionClass}>Lagre endringer</Button>}
+    <Button asChild variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}><Link to={askUrl}>Spør Vekter’n om {isCar ? 'bilforsikringen' : isWork ? 'reisen' : 'forsikringen'}</Link></Button>
+    {isWork && <Button asChild variant="outline" className={`${actionClass} border-[#7f8bc0] bg-transparent`}><Link to={`/chat?question=${encodeURIComponent('Hvilken ekstra reiseforsikring kan jeg vurdere for familien, siden jobbens avtale bare dekker meg?')}`}>Se ekstra dekning for familien</Link></Button>}
+  </main>
+}
+
+export default function Home() {
+  const store = useMockState()
+  const { state, setState, storageError } = store
+  const location = useLocation()
+  const isChat = location.pathname === '/chat'
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const [message, setMessage] = useState('')
+  const customer = state?.customer
+  const insurance = customer?.insurances.find((item) => item.coverageId === params.get('insurance'))
+  const total = customer?.insurances.reduce((sum, item) => sum + item.monthlyPriceNok, 0) ?? 0
+  const firstName = customer?.name.split(' ')[0]
+  const initials = customer?.name.split(' ').map((part) => part[0]).slice(0, 2).join('')
+
+  function saveCar(options: Record<string, boolean>) {
+    if (!state || !insurance) return
+    const updated = Object.entries(options).reduce((current, [option, enabled]) => applyMockAction(current, { type: 'set-coverage-option', coverageId: insurance.coverageId, option, enabled }), state.customer)
+    setState({ ...state, customer: updated })
   }
 
-  function newConversation() {
-    if (pendingRef.current || !state) return
-    const next = createConversation()
-    setState({ ...state, conversations: [...state.conversations, next], activeConversationId: next.id })
-    setError('')
-    setConversation((value) => value + 1)
-  }
-
-  function selectConversation(id: string) {
-    if (pendingRef.current || !state) return
-    setState({ ...state, activeConversationId: id })
-    setError('')
-    setConversation((value) => value + 1)
-  }
-
-  function resetAllDemoData() {
-    if (pendingRef.current || !state) return
-    setState(createDefaultState())
-    setError('')
-    setConversation((value) => value + 1)
-    setResetNotice('Alle demodata er tilbakestilt. Standardkunden er gjenopprettet og alle samtaler er slettet.')
-  }
-
-  useEffect(() => {
-    if (conversation > 0) composerRef.current?.focus()
-  }, [conversation])
-
-  return (
-    <div className="vekter-theme flex h-dvh min-h-0 overflow-hidden">
-      <aside aria-label="Samtalerom" className="hidden w-64 shrink-0 flex-col gap-8 border-r border-border/60 bg-background/40 p-6 lg:flex">
-        <AssistantIdentity />
-        <div>
-          <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Ditt samtalerom</p>
-          <Button type="button" onClick={newConversation} disabled={isLoading || !state} className="w-full justify-start"><Plus /> Ny samtale</Button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Samtaler</p>
-          <div className="space-y-2">
-            {state?.conversations.slice().reverse().map((item) => (
-              <Button key={item.id} type="button" variant={item.id === state.activeConversationId ? 'secondary' : 'ghost'} disabled={isLoading} onClick={() => selectConversation(item.id)} aria-pressed={item.id === state.activeConversationId} className="h-auto w-full justify-start whitespace-normal text-left">
-                <MessageCircle aria-hidden="true" className="shrink-0" /><span className="line-clamp-2 break-words">{item.messages[0]?.content ?? 'Ny samtale'}</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-        <AdvisorNote>Du bestemmer. Endringer lagres bare i din lokale demoprofil, aldri i reelle avtaler.</AdvisorNote>
-        <Link to="/components" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Komponentbibliotek</Link>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-5 py-4 sm:px-8">
-          <AssistantIdentity />
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Badge variant="outline" className="hidden sm:inline-flex">Prototype</Badge>
-            <Button type="button" variant="ghost" size="icon-lg" onClick={newConversation} disabled={isLoading || !state} aria-label="Ny samtale" className="lg:hidden"><Plus /></Button>
-            <Dialog onOpenChange={() => setResetNotice('')}>
-              <DialogTrigger asChild><Button type="button" variant="ghost" size="icon-lg" aria-label="Om Vekter’n"><CircleHelp /></Button></DialogTrigger>
-              <DialogContent className="vekter-theme">
-                <DialogHeader><DialogTitle>Om Vekter’n</DialogTitle><DialogDescription>Din digitale forsikringsassistent · hackathonprototype</DialogDescription></DialogHeader>
-                <p className="text-sm leading-6">Svarene er AI-generert og kan inneholde feil. Kontroller viktig informasjon mot forsikringsvilkårene dine. Ingen forsikringsavtale endres her.</p>
-                <p className="text-sm leading-6 text-muted-foreground">Demoprofilen og alle samtaler lagres i localStorage i denne nettleseren og beholdes når siden lastes på nytt. Meldinger og gjeldende demoprofil sendes til den konfigurerte AI-tjenesten. Ikke del sensitive personopplysninger.</p>
-                <section className="space-y-3" aria-label="Demoprofil">
-                  <h2 className="text-sm font-bold">Demoprofil: {state?.customer.name ?? 'Laster …'}</h2>
-                  <ul className="space-y-1 text-sm text-muted-foreground">{state?.customer.insurances.map((insurance) => <li key={insurance.coverageId}>{insurance.type}: {insurance.coverage}{insurance.optionalCoverages && ` · ${Object.entries(insurance.optionalCoverages).filter(([, enabled]) => enabled).map(([option]) => coverageOptionLabels[option]).join(', ') || 'ingen tilvalg'}`}</li>)}</ul>
-                  <Button type="button" variant="destructive" disabled={isLoading || !state} onClick={resetAllDemoData}>Tilbakestill alle demodata</Button>
-                  <p className="text-xs text-muted-foreground">Gjenoppretter standardkunden og forsikringene, sletter alle samtaler og starter en ny, tom samtale. Dette kan ikke angres.</p>
-                  {resetNotice && <p role="status" className="text-sm text-primary">{resetNotice}</p>}
-                  {storageError && <p role="alert" className="text-sm text-destructive">{storageError}</p>}
-                </section>
-                <Link to="/components" className="text-sm text-primary underline underline-offset-4">Se komponentbiblioteket</Link>
+  return <div className="vekter-theme min-h-dvh lg:flex lg:h-dvh lg:overflow-hidden">
+    <aside aria-label="Forsikringsoversikt" className={`${insurance || isChat ? 'hidden' : 'flex'} mx-auto min-h-dvh w-full max-w-[393px] flex-col pt-[max(48px,env(safe-area-inset-top))] lg:mx-0 lg:flex lg:h-dvh lg:min-h-0 lg:w-[393px] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-border`}>
+      {storageError && <p role="alert" className="px-6 pb-3 text-sm text-destructive">{storageError}</p>}
+      {!customer ? <p role="status" className="px-6">Laster forsikringene dine …</p> : <>
+        {params.has('insurance') && !insurance && <p role="alert" className="px-6 pb-3 text-sm text-destructive">Forsikringen finnes ikke i demoprofilen.</p>}
+        <div className="flex flex-1 flex-col items-center gap-3 px-6">
+          <header className="flex w-full items-center justify-between">
+            <h1 className="font-display text-lg leading-[1.3]">God morgen, {firstName}</h1>
+            <Dialog><DialogTrigger asChild><Button size="icon" variant="secondary" className="size-9 rounded-full bg-card text-sm" aria-label="Åpne demoprofil">{initials}</Button></DialogTrigger>
+              <DialogContent className="vekter-theme"><DialogHeader><DialogTitle>{customer.name}</DialogTitle><DialogDescription>Fiktiv kundeprofil · Vekter’n prototype</DialogDescription></DialogHeader>
+                <p className="text-sm leading-6">Alle priser, avtalevalg og opplysninger i oversikten er demodata. Endringer lagres bare i denne nettleseren, aldri i reelle forsikringsavtaler.</p>
+                <p className="text-sm leading-6 text-muted-foreground">«100 % dekket» er en illustrasjon fra prototypen, ikke en vurdering av forsikringsbehovet ditt.</p>
+                <Button asChild><Link to="/chat">Åpne samtalerommet</Link></Button><Link to="/chat" className="text-sm text-muted-foreground underline">Administrer samtaler og tilbakestill demodata i Om Vekter’n</Link><Link to="/components" className="text-sm text-muted-foreground underline">Komponentbibliotek</Link>
               </DialogContent>
             </Dialog>
-          </div>
-        </header>
-
-        <main className="flex min-h-0 flex-1 flex-col">
-          {storageError && <p role="alert" className="px-5 py-3 text-sm text-destructive sm:px-8">{storageError}</p>}
-          <div className="border-b border-border/40 px-5 py-2 lg:hidden">
-            <label className="flex items-center gap-3 text-sm">Samtale
-              <select aria-label="Velg samtale" className="min-w-0 flex-1 rounded-md border border-border bg-background p-2" disabled={isLoading || !state} value={state?.activeConversationId ?? ''} onChange={(event) => selectConversation(event.target.value)}>
-                {!state && <option value="">Laster …</option>}
-                {state?.conversations.slice().reverse().map((item) => <option key={item.id} value={item.id}>{item.messages[0]?.content.slice(0, 60) ?? 'Ny samtale'}</option>)}
-              </select>
-            </label>
-          </div>
-          <div ref={logRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 sm:px-8">
-            {messages.length > 0 ? (
-              <div className="mx-auto w-full max-w-3xl py-6 sm:py-10">
-                <h1 className="sr-only">Samtale med Vekter’n</h1>
-                <div role="log" aria-label="Samtale" aria-live="polite" className="space-y-4">
-                  {messages.map((message, index) => <ChatBubble key={index} role={message.role} className="break-words"><p className="whitespace-pre-wrap">{message.content}</p></ChatBubble>)}
-                </div>
-                {isLoading && <p role="status" className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> Vekter’n tenker …</p>}
-                {!isLoading && !error && messages.at(-1)?.role === 'user' && <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void requestReply(messages)}>Hent svar</Button>}
-                {error && <div role="alert" className="mt-5 rounded-xl border border-destructive/50 bg-card p-4"><p className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" size="sm" disabled={isLoading} className="mt-3" onClick={() => void requestReply(messages)}>Prøv igjen</Button></div>}
-              </div>
-            ) : (
-              <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center py-10 sm:py-14">
-                <div className="mx-auto max-w-xl text-center">
-                  <AssistantMark className="mx-auto size-24 sm:size-28" />
-                  <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-primary">Vekter’n er på vakt</p>
-                  <h1 className="mt-4 font-display text-4xl leading-tight sm:text-5xl">Hei! Hva kan jeg hjelpe deg med?</h1>
-                  <p className="mx-auto mt-4 max-w-md leading-7 text-muted-foreground">Spør meg om forsikringene dine, hva de dekker, eller hva du bør gjøre når noe skjer.</p>
-                </div>
-                <section aria-labelledby="suggestions-heading" className="mt-10">
-                  <h2 id="suggestions-heading" className="mb-4 text-sm font-bold">Hva lurer du på?</h2>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {suggestions.map(({ icon: Icon, title, question }) => (
-                      <Button key={title} type="button" variant="outline" onClick={() => send(question)} disabled={isLoading || !state} className="group h-auto min-h-24 justify-start gap-3 whitespace-normal rounded-xl border-border/60 bg-card/60 p-4 text-left">
-                        <Icon aria-hidden="true" className="size-6! shrink-0 text-primary" strokeWidth={1.5} />
-                        <span className="min-w-0 flex-1"><span className="block text-xs text-muted-foreground">{title}</span><span className="mt-1 block leading-5">{question}</span></span>
-                        <ArrowRight aria-hidden="true" className="text-primary transition-transform group-hover:translate-x-1" />
-                      </Button>
-                    ))}
-                  </div>
-                </section>
-              </div>
-            )}
-          </div>
-
-          <div className="shrink-0 border-t border-border/40 bg-background/70 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8 sm:pt-5">
-            <div className="mx-auto w-full max-w-3xl">
-              <ChatComposer key={conversation} inputRef={composerRef} onSend={send} disabled={isLoading || !state} />
-              <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">Vekter’n kan ta feil. Sjekk viktig informasjon.</p>
-            </div>
-          </div>
-        </main>
-      </div>
+          </header>
+          <CoverageRing value={100} />
+          <p className="font-display text-[32px] leading-[39px]">100 % dekket</p>
+          <p className="text-center text-sm leading-[21px] text-muted-foreground">{customer.insurances.length} forsikringer fra {new Set(customer.insurances.map((item) => item.provider)).size} selskaper · kr {money(total)} / mnd</p>
+          <nav aria-label="Forsikringene dine" className="w-full">
+            {policyOrder.map((id) => customer.insurances.find((item) => item.coverageId === id)).filter((item): item is MockInsurance => !!item).map((item) => {
+              const Icon = icons[item.coverageId as keyof typeof icons] ?? House
+              return <InsuranceRow key={item.coverageId} icon={<Icon strokeWidth={1.5} />} title={item.displayName} provider={item.provider} price={item.employer ? undefined : `kr ${money(item.monthlyPriceNok)}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />
+            })}
+          </nav>
+        </div>
+        <footer className="px-5 pt-3.5 pb-[max(30px,env(safe-area-inset-bottom))]">
+          <form aria-label="Spør Vekter’n" className="flex items-center gap-2 rounded-full border border-input bg-card p-1.5 pl-5" onSubmit={(event) => { event.preventDefault(); navigate(message.trim() ? `/chat?question=${encodeURIComponent(message.trim())}` : '/chat') }}>
+            <input aria-label="Melding til Vekter’n" placeholder="Skriv til Vekter’n …" value={message} onChange={(event) => setMessage(event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-muted-foreground" />
+            <Button type="submit" size="icon-lg" className="rounded-full" aria-label={message.trim() ? 'Send melding' : 'Åpne samtalerommet'}><ArrowRight className="size-6" /></Button>
+          </form>
+        </footer>
+      </>}
+    </aside>
+    <div className={`${insurance || isChat ? 'block' : 'hidden'} min-w-0 flex-1 lg:block lg:h-dvh lg:overflow-y-auto`}>
+      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCar} /></div> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
     </div>
-  )
+  </div>
 }

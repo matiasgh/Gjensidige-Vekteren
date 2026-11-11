@@ -1,9 +1,7 @@
-import { ShieldCheck } from 'lucide-react'
 import { cn } from '~/lib/utils'
 
-/** Placeholder until the original Vekter'n illustration is supplied as an asset. */
 export function AssistantMark({ className }: { className?: string }) {
-  return <span aria-hidden="true" className={cn('inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground', className)}><ShieldCheck className="size-[60%]" strokeWidth={1.5} /></span>
+  return <img src="/images/vekter-mark.svg" alt="" aria-hidden="true" className={cn('inline-block size-10 shrink-0', className)} />
 }
 
 export function AssistantIdentity({ className }: { className?: string }) {
