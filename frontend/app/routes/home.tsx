@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AssistantMark, CoverageRing, CoverageRow, InsuranceRow } from '~/components/vekter'
 import { applyMockAction, carCoverageOptions, carMonthlyPrice } from '~/lib/mock-actions'
 import { optionLabels, type InsuranceCategory, type MockInsurance } from '~/lib/mock-customer'
-import { useMockState } from '~/lib/use-mock-state'
+import { saveMockState, useMockState } from '~/lib/use-mock-state'
+import { createConversation } from '~/lib/mock-state'
 import ChatRoom from '~/components/vekter/chat-room'
 
 const money = (value: number) => value.toLocaleString('nb-NO')
@@ -93,6 +94,7 @@ export default function Home() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [message, setMessage] = useState('')
+  const [chatError, setChatError] = useState('')
   const customer = state?.customer
   const insurance = customer?.insurances.find((item) => item.coverageId === params.get('insurance'))
   const total = customer?.insurances.reduce((sum, item) => sum + item.monthlyPriceNok, 0) ?? 0
@@ -106,6 +108,23 @@ export default function Home() {
     if (!state || !insurance) return
     const updated = Object.entries(options).reduce((current, [option, enabled]) => applyMockAction(current, { type: 'set-coverage-option', coverageId: insurance.coverageId, option, enabled }), state.customer)
     setState({ ...state, customer: updated })
+  }
+
+  function startChat() {
+    if (!state) return
+    const conversation = createConversation()
+    const next = { ...state, conversations: [...state.conversations, conversation], activeConversationId: conversation.id }
+    // Persist before navigating: switching routes can remount the state owner.
+    if (!saveMockState(next)) {
+      setChatError('Kunne ikke lagre den nye samtalen. Prøv igjen.')
+      return
+    }
+    setChatError('')
+    setState(next)
+    const query = new URLSearchParams({ conversation: conversation.id })
+    if (message.trim()) query.set('question', message.trim())
+    setMessage('')
+    navigate(`/chat?${query}`)
   }
 
   return <div className="vekter-theme min-h-dvh lg:flex lg:h-dvh lg:overflow-hidden">
@@ -138,9 +157,10 @@ export default function Home() {
           </nav>
         </div>
         <footer className="px-5 pt-3.5 pb-[max(30px,env(safe-area-inset-bottom))]">
-          <form aria-label="Spør Vekter’n" className="flex items-center gap-2 rounded-full border border-input bg-card p-1.5 pl-5" onSubmit={(event) => { event.preventDefault(); navigate(message.trim() ? `/chat?question=${encodeURIComponent(message.trim())}` : '/chat') }}>
+          {chatError && <p role="alert" className="mb-3 text-sm text-destructive">{chatError}</p>}
+          <form aria-label="Spør Vekter’n" className="flex items-center gap-2 rounded-full border border-input bg-card p-1.5 pl-5" onSubmit={(event) => { event.preventDefault(); startChat() }}>
             <input aria-label="Melding til Vekter’n" placeholder="Skriv til Vekter’n …" value={message} onChange={(event) => setMessage(event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-muted-foreground" />
-            <Button type="submit" size="icon-lg" className="rounded-full" aria-label={message.trim() ? 'Send melding' : 'Åpne samtalerommet'}><ArrowRight className="size-6" /></Button>
+            <Button type="submit" size="icon-lg" className="rounded-full" disabled={!state} aria-label={message.trim() ? 'Start ny samtale og send melding' : 'Start ny samtale'}><ArrowRight className="size-6" /></Button>
           </form>
         </footer>
       </>}
