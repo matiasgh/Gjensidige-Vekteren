@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Link, useSearchParams } from 'react-router'
 import { ArrowRight, Bell, Briefcase, CarFront, Check, Circle, Eye, Hand, House, Plus } from 'lucide-react'
 import type { Route } from './+types/onboarding'
 import { mockCustomer } from '~/lib/mock-customer.server'
@@ -10,7 +10,6 @@ import { Separator } from '~/components/ui/separator'
 import { AdvisorNote, AssistantIdentity, AssistantMark, ChatBubble, ChatComposer, CoverageRing, InsuranceRow, StepProgress } from '~/components/vekter'
 
 const STEP_COUNT = 7
-const SPLASH_MS = 2000
 const TICK_MS = 600
 
 type SourceKind = 'gjensidige' | 'employer' | 'other'
@@ -88,28 +87,22 @@ const Progress = ({ step }: { step: number }) => <StepProgress value={step - 1} 
 
 const fadeUp = 'animate-in fade-in slide-in-from-bottom-2 duration-300'
 
-function StepLink({ to, variant = 'default', replace, children }: { to: string; variant?: 'default' | 'outline'; replace?: boolean; children: ReactNode }) {
-  return <Button asChild variant={variant} className="w-full text-base font-bold"><Link to={to} replace={replace}>{children}</Link></Button>
+function StepLink({ to, variant = 'default', className, children }: { to: string; variant?: 'default' | 'outline'; className?: string; children: ReactNode }) {
+  return <Button asChild variant={variant} className={cn('w-full text-base font-bold', className)}><Link to={to}>{children}</Link></Button>
 }
 
 function Splash() {
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const timer = setTimeout(() => navigate(stepHref(2), { replace: true }), SPLASH_MS)
-    return () => clearTimeout(timer)
-  }, [navigate])
-
   return (
     <Screen style={sunrise(85)}>
-      <Link to={stepHref(2)} replace aria-label="Gå videre" className="flex flex-1 flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center gap-3.5 px-8">
-          <AssistantMark className={cn('size-[170px]', fadeUp)} />
-          <h1 className="font-display text-[52px] leading-none">Vekter'n</h1>
-          <p className="text-xl font-medium text-primary">Vekter'n har våknet</p>
-        </div>
-        <p className="py-9 text-center text-sm font-medium text-primary-foreground">drevet av Gjensidige</p>
-      </Link>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3.5 px-8">
+        <AssistantMark className={cn('size-[170px]', fadeUp)} />
+        <h1 className="font-display text-[52px] leading-none">Vekter'n</h1>
+        <p className="text-xl font-medium text-primary">Vekter'n har våknet</p>
+      </div>
+      <div className="flex flex-col gap-6 px-7 pb-9">
+        <StepLink to={stepHref(2)} className="shadow-lg">Start</StepLink>
+        <p className="text-center text-sm font-medium text-primary-foreground">drevet av Gjensidige</p>
+      </div>
     </Screen>
   )
 }
@@ -158,6 +151,12 @@ function Priorities() {
   const [selected, setSelected] = useState<string[]>([])
   const [lastSent, setLastSent] = useState<string[]>([])
   const [sent, setSent] = useState<string[]>([])
+  const logRef = useRef<HTMLDivElement>(null)
+
+  // Only runs after the user sends something, so the reply is in view.
+  useEffect(() => {
+    if (sent.length && logRef.current) logRef.current.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
+  }, [sent])
 
   const chipsChanged = selected.length > 0 && selected.join('|') !== lastSent.join('|')
 
@@ -179,7 +178,7 @@ function Priorities() {
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 px-6 pt-8">
         <Progress step={3} />
         <AssistantIdentity status={null} />
-        <div role="log" aria-label="Samtale" aria-live="polite" className="-mx-6 flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-6 pb-2">
+        <div ref={logRef} role="log" aria-label="Samtale" aria-live="polite" className="-mx-6 flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-6 pb-2">
           <ChatBubble role="assistant" className={bubbleText}>Fortell meg hva du er opptatt av akkurat nå. Velg så mange du vil, eller skriv selv.</ChatBubble>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Hva er viktig for deg?">
             {priorityChips.map((chip) => {
@@ -245,23 +244,25 @@ function ExistingInsurance({ sources }: { sources: LoaderData['sources'] }) {
 }
 
 function ReadingTerms({ policies }: { policies: LoaderData['policies'] }) {
-  const navigate = useNavigate()
   const [done, setDone] = useState(0)
+  const finished = done >= policies.length
 
+  // Visual tick-off only; moving on to step 6 always waits for the user.
   useEffect(() => {
-    if (done >= policies.length) {
-      const timer = setTimeout(() => navigate(stepHref(6), { replace: true }), TICK_MS + 300)
-      return () => clearTimeout(timer)
+    if (finished) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDone(policies.length)
+      return
     }
     const timer = setTimeout(() => setDone((d) => d + 1), TICK_MS)
     return () => clearTimeout(timer)
-  }, [done, policies.length, navigate])
+  }, [done, finished, policies.length])
 
   return (
     <Screen className="items-center gap-[18px] px-7 pt-8 pb-[34px]">
       <Progress step={5} />
       <CoverageRing value={(done / policies.length) * 100} segments={policies.length} className="size-60" />
-      <h1 className="text-center font-display text-[30px]">Jeg leser vilkårene dine …</h1>
+      <h1 className="text-center font-display text-[30px]">{finished ? 'Jeg har lest vilkårene dine.' : 'Jeg leser vilkårene dine …'}</h1>
       <div className="w-full" aria-live="polite">
         {policies.map(({ category, provider }, i) => (
           <InsuranceRow
@@ -277,6 +278,9 @@ function ReadingTerms({ policies }: { policies: LoaderData['policies'] }) {
       </div>
       <div className="flex-1" />
       <p className="text-center text-sm font-medium text-muted-foreground">Jeg sammenligner med skadedata for hus på din alder og din del av landet.</p>
+      {finished
+        ? <StepLink to={stepHref(6)} className={fadeUp}>Se hva jeg fant</StepLink>
+        : <Button type="button" disabled className="w-full text-base font-bold">Leser vilkårene …</Button>}
     </Screen>
   )
 }
