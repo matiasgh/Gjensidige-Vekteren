@@ -106,7 +106,7 @@ function Screen({ className, style, fixedHeight = false, children }: { className
   )
 }
 
-const Progress = ({ step }: { step: number }) => <StepProgress value={step - 1} total={STEP_COUNT - 1} />
+const Progress = ({ step, className }: { step: number; className?: string }) => <StepProgress value={step - 1} total={STEP_COUNT - 1} className={className} />
 
 const fadeUp = 'animate-in fade-in slide-in-from-bottom-2 duration-300'
 
@@ -138,7 +138,7 @@ const promises = [
 
 function Intro() {
   return (
-    <Screen className="gap-5 px-7 pt-8">
+    <Screen className="gap-4 px-7 pt-6">
       <Progress step={2} />
       <AssistantMark className="size-[72px]" />
       <h1 className="font-display text-[40px] leading-[44px]">Hei! Jeg er Vekter'n.</h1>
@@ -249,7 +249,7 @@ const statusDot = 'flex size-7 shrink-0 items-center justify-center rounded-full
 
 function ExistingInsurance({ sources }: { sources: OnboardingData['sources'] }) {
   return (
-    <Screen className="gap-[18px] px-7 pt-8">
+    <Screen className="gap-2.5 px-7 pt-6">
       <Progress step={4} />
       <h1 className="font-display text-4xl leading-10">Hva har du fra før?</h1>
       <p className="text-muted-foreground">Du trenger ikke ha alt hos Gjensidige. Jeg ser på alt, uansett hvem som leverer.</p>
@@ -310,15 +310,15 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
   }, [autoAdvance, done, finished, policies.length, navigate])
 
   return (
-    <Screen className="items-center gap-[18px] px-7 pt-8 pb-[34px]">
-      <Progress step={5} />
-      <CoverageRing value={(done / policies.length) * 100} segments={policies.length} className="size-60" />
-      <h1 className="text-center font-display text-[30px]">{finished ? 'Jeg har lest vilkårene dine.' : 'Jeg leser vilkårene dine …'}</h1>
+    <Screen className="items-center gap-3 px-7 pt-6 pb-5">
+      <Progress step={5} className="w-full" />
+      <CoverageRing value={(done / policies.length) * 100} segments={policies.length} className="size-[min(240px,27dvh)]" />
+      <h1 className="text-center font-display text-[26px] leading-[30px]">{finished ? 'Jeg har lest vilkårene dine.' : 'Jeg leser vilkårene dine …'}</h1>
       <div className="w-full" aria-live="polite">
         {policies.map(({ category, provider }, i) => (
           <InsuranceRow
             key={category}
-            className="min-h-0 py-2.5"
+            className="min-h-0 py-2"
             icon={i < done
               ? <span className={cn('flex size-[22px] items-center justify-center rounded-full bg-primary text-primary-foreground', fadeUp)}><Check className="size-3.5!" strokeWidth={2.6} aria-label="Lest" /></span>
               : <Circle strokeWidth={1.25} strokeDasharray="3 3" aria-label="Venter" />}
@@ -338,19 +338,19 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
 
 function GapAnalysis({ gaps }: { gaps: OnboardingData['gapAnalysis'] }) {
   return (
-    <Screen className="gap-4 px-7 pt-8 pb-[30px]">
+    <Screen className="gap-2.5 px-6 pt-5 pb-4">
       <Progress step={6} />
-      <h1 className="font-display text-4xl leading-10">Du er nesten riktig dekket.</h1>
-      <p className="text-muted-foreground">Tre ting jeg la merke til, og hvorfor.</p>
+      <h1 className="font-display text-[30px] leading-8">Du er nesten riktig dekket.</h1>
+      <p className="text-sm font-medium text-muted-foreground">Tre ting jeg la merke til, og hvorfor.</p>
       <ol className="flex flex-col">
         {gaps.map(({ title, reason, actionLabel }, i) => (
           <li key={title}>
-            <div className="flex items-start gap-4 py-4">
-              <span className="w-5 shrink-0 font-display text-[30px] leading-none text-primary">{i + 1}</span>
-              <div className="flex min-w-0 flex-1 flex-col gap-1 leading-normal">
-                <p className="font-bold">{title}</p>
-                <p className="text-sm font-medium text-muted-foreground">{reason}</p>
-                <span className="flex items-center gap-1.5 pt-1 text-sm font-medium text-primary">
+            <div className="flex items-start gap-3.5 py-2.5">
+              <span className="w-5 shrink-0 font-display text-[26px] leading-none text-primary">{i + 1}</span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <p className="leading-snug font-bold">{title}</p>
+                <p className="text-[13px] leading-[18px] font-medium text-muted-foreground">{reason}</p>
+                <span className="flex items-center gap-1.5 pt-0.5 text-sm font-medium text-primary">
                   {actionLabel} <ArrowRight size={16} strokeWidth={2} aria-hidden />
                 </span>
               </div>
@@ -360,9 +360,11 @@ function GapAnalysis({ gaps }: { gaps: OnboardingData['gapAnalysis'] }) {
         ))}
       </ol>
       <div className="flex-1" />
-      <StepLink to={stepHref(7)}>Gå gjennom forslagene</StepLink>
-      <StepLink to={stepHref(7)} variant="outline">Ikke nå</StepLink>
-      <p className="text-center text-sm font-medium text-muted-foreground">Ingenting skjer før du sier ja.</p>
+      <div className="flex flex-col gap-2">
+        <StepLink to={stepHref(7)} className="h-12">Gå gjennom forslagene</StepLink>
+        <StepLink to={stepHref(7)} variant="outline" className="h-12">Ikke nå</StepLink>
+      </div>
+      <p className="text-center text-[13px] font-medium text-muted-foreground">Ingenting skjer før du sier ja.</p>
     </Screen>
   )
 }
