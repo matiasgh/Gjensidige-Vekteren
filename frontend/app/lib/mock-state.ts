@@ -2,23 +2,32 @@ import { createDefaultCustomer, isMockCustomer, type MockCustomer } from './mock
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string }
 export type MockConversation = { id: string; messages: ChatMessage[] }
+// Priorities are the step 3 chips plus anything the customer wrote there.
+export type OnboardingState = { completed: boolean; priorities: string[] }
 export type MockState = {
   version: 2
   customer: MockCustomer
   conversations: MockConversation[]
   activeConversationId: string
+  onboarding: OnboardingState
 }
 
-export const MOCK_STORAGE_KEY = 'vekteren.mock-state.v1'
-// Reuse the storage slot, but reset v1's unrelated customer through version 2 validation.
+export const MOCK_STORAGE_KEY = 'vekteren.mock-state.v2'
+export const LEGACY_MOCK_STORAGE_KEY = 'vekteren.mock-state.v1'
+export const MAX_PRIORITIES = 20
+export const MAX_PRIORITY_LENGTH = 500
 
 export function createConversation(): MockConversation {
   return { id: crypto.randomUUID(), messages: [] }
 }
 
+export function createDefaultOnboarding(): OnboardingState {
+  return { completed: false, priorities: [] }
+}
+
 export function createDefaultState(): MockState {
   const conversation = createConversation()
-  return { version: 2, customer: createDefaultCustomer(), conversations: [conversation], activeConversationId: conversation.id }
+  return { version: 2, customer: createDefaultCustomer(), conversations: [conversation], activeConversationId: conversation.id, onboarding: createDefaultOnboarding() }
 }
 
 export function isChatMessage(value: unknown): value is ChatMessage {
@@ -27,13 +36,36 @@ export function isChatMessage(value: unknown): value is ChatMessage {
   return (message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string' && !!message.content.trim()
 }
 
-export function isMockState(value: unknown): value is MockState {
+export function isPriorityList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= MAX_PRIORITIES
+    && value.every((item) => typeof item === 'string' && !!item.trim() && item.length <= MAX_PRIORITY_LENGTH)
+}
+
+function isOnboardingState(value: unknown): value is OnboardingState {
   if (!value || typeof value !== 'object') return false
-  const state = value as MockState
-  return state.version === 2 && isMockCustomer(state.customer)
-    && Array.isArray(state.conversations) && state.conversations.length > 0
+  const onboarding = value as Record<string, unknown>
+  return Object.keys(onboarding).length === 2 && typeof onboarding.completed === 'boolean' && isPriorityList(onboarding.priorities)
+}
+
+function hasValidConversations(state: Pick<MockState, 'conversations' | 'activeConversationId'>) {
+  return Array.isArray(state.conversations) && state.conversations.length > 0
     && state.conversations.every((conversation) => conversation && typeof conversation.id === 'string'
       && Array.isArray(conversation.messages) && conversation.messages.every(isChatMessage))
     && new Set(state.conversations.map(({ id }) => id)).size === state.conversations.length
     && state.conversations.some(({ id }) => id === state.activeConversationId)
+}
+
+export function isMockState(value: unknown): value is MockState {
+  if (!value || typeof value !== 'object') return false
+  const state = value as MockState
+  return state.version === 2 && isMockCustomer(state.customer) && hasValidConversations(state) && isOnboardingState(state.onboarding)
+}
+
+// Previous branches used different customer shapes. Keep valid conversations
+// and onboarding preferences, but replace incompatible policy data with the shared seed.
+export function migrateLegacyState(value: unknown): MockState | null {
+  if (!value || typeof value !== 'object') return null
+  const legacy = value as { version?: unknown; conversations: MockConversation[]; activeConversationId: string; onboarding?: unknown }
+  if ((legacy.version !== 1 && legacy.version !== 2) || !hasValidConversations(legacy)) return null
+  return { ...createDefaultState(), conversations: legacy.conversations, activeConversationId: legacy.activeConversationId, onboarding: isOnboardingState(legacy.onboarding) ? legacy.onboarding : createDefaultOnboarding() }
 }

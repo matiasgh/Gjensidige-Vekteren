@@ -6,7 +6,7 @@ Open `/components` for the interactive catalog. It uses local demo state and nev
 
 - `ui/`: actual shadcn/ui registry components, owned by this repository. Radix provides accessible switch, dialog, and tab behavior. `cn` combines clsx and tailwind-merge.
 - `vekter/`: product patterns composed from those primitives: `AssistantIdentity`, `AssistantMark`, `AdvisorNote`, `CoverageRow`, `InsuranceRow`, `CoverageRing`, `StepProgress`, `ChatBubble`, and `ChatComposer`.
-- `app/app.css`: semantic theme tokens. Add `vekter-theme` to a container to opt into the prototype's navy/yellow appearance. The main chat and catalog both use this theme; the root defaults remain light for other consumers.
+- `app/app.css`: semantic theme tokens. Add `vekter-theme` to a container to opt into the prototype's navy/yellow appearance. The onboarding (`/onboarding`), overview (`/`), chat (`/chat`) and catalog all use this theme; the root defaults remain light for other consumers.
 
 ```tsx
 import { Button } from '~/components/ui/button'
@@ -21,7 +21,7 @@ import { CoverageRow, AdvisorNote } from '~/components/vekter'
 
 Use controlled switches for real domain state; disabled coverage rows represent mandatory or externally managed coverage. `ChatComposer` submits trimmed text on Enter (Shift+Enter adds a line) and calls the supplied callback; the caller owns network requests, pending state, errors, and message history. Pass `disabled` while a request is pending.
 
-Dialogs render through a portal, so apply `className="vekter-theme"` to `DialogContent` as well as the surrounding page. Always include a `DialogTitle` and `DialogDescription`. Icon-only controls need accessible labels. Insurance rows require an explicit action handler.
+Dialogs render through a portal, so apply `className="vekter-theme"` to `DialogContent` as well as the surrounding page. Always include a `DialogTitle` and `DialogDescription`. Icon-only controls need accessible labels. `InsuranceRow` is a button when given `onClick` and a static row otherwise; `trailing` replaces the price/chevron slot (e.g. a status icon or provider badge). `CoverageRing` takes optional `segments` for the segmented per-policy ring. `ChatComposer` accepts `placeholder` and `allowEmpty` (submit without text, e.g. when chips are selected).
 
 ## Design evidence and limitations
 

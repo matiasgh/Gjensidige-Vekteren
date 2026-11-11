@@ -1,4 +1,4 @@
-import type { MockCustomer } from './mock-customer'
+import { levelsFor, type MockCustomer } from './mock-customer'
 
 // Future flows can add actions here without coupling mutations to chat wording.
 export type MockAction =
@@ -13,12 +13,12 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
 
   switch (action.type) {
     case 'set-coverage-level': {
-      const travelLevels: Record<string, string> = { 'travel-standard': 'Reise', 'travel-plus': 'Reise Pluss' }
-      if (!Object.hasOwn(travelLevels, insurance.coverageId) || !Object.hasOwn(travelLevels, action.targetCoverageId)) {
+      const levels = levelsFor(insurance.coverageId)
+      if (!levels || !Object.hasOwn(levels, action.targetCoverageId)) {
         throw new Error('Denne dekningsendringen er ikke definert i prototypen ennå.')
       }
       insurance.coverageId = action.targetCoverageId
-      insurance.coverage = travelLevels[action.targetCoverageId]
+      insurance.coverage = levels[action.targetCoverageId]
       break
     }
     case 'set-coverage-option':

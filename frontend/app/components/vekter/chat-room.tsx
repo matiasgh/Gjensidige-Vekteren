@@ -6,6 +6,7 @@ import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
 import { AssistantIdentity, AssistantMark, ChatBubble, ChatComposer } from '~/components/vekter'
 import { applyMockAction, isMockAction } from '~/lib/mock-actions'
+import { optionLabels } from '~/lib/mock-customer'
 import { createConversation, createDefaultState, type ChatMessage } from '~/lib/mock-state'
 import type { useMockState } from '~/lib/use-mock-state'
 
@@ -16,15 +17,7 @@ const suggestions = [
   { icon: ShieldCheck, title: 'Skade', question: 'Hvordan melder jeg en skade?' },
 ]
 
-const coverageOptionLabels: Record<string, string> = {
-  rentalCar: 'leiebil',
-  partial: 'delkasko',
-  collision: 'kasko',
-  roadside: 'veihjelp',
-  puncture: 'punkteringsdekning',
-  extendedMobileInsurance: 'utvidet mobilforsikring',
-  increasedBicycleTheftLimit: 'økt grense for sykkeltyveri',
-}
+const coverageOptionLabels = optionLabels
 
 export default function ChatRoom({ state, setState, storageError }: ReturnType<typeof useMockState>) {
   const [searchParams] = useSearchParams()
@@ -53,7 +46,7 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, customer: state.customer }),
+        body: JSON.stringify({ messages: next, customer: state.customer, priorities: state.onboarding.priorities }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? 'Noe gikk galt.')

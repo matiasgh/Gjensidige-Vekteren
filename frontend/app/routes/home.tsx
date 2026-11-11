@@ -1,18 +1,18 @@
 import { useState, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { ArrowRight, BriefcaseBusiness, CarFront, Check, ChevronLeft, House, LockKeyhole, Plane, Users, X } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
 import { AssistantMark, CoverageRing, CoverageRow, InsuranceRow } from '~/components/vekter'
 import { applyMockAction, carCoverageOptions, carMonthlyPrice } from '~/lib/mock-actions'
-import type { MockInsurance } from '~/lib/mock-customer'
+import { optionLabels, type InsuranceCategory, type MockInsurance } from '~/lib/mock-customer'
 import { useMockState } from '~/lib/use-mock-state'
 import ChatRoom from '~/components/vekter/chat-room'
 
 const money = (value: number) => value.toLocaleString('nb-NO')
-const icons = { 'contents-plus': House, 'car-kasko': CarFront, 'child-medium': Users, 'travel-work': Plane, 'business-if': BriefcaseBusiness }
-const policyOrder = ['contents-plus', 'car-kasko', 'child-medium', 'travel-work', 'business-if']
+const icons = { 'Hus og innbo': House, Bil: CarFront, 'Familie og barn': Users, Reise: Plane, Bedrift: BriefcaseBusiness }
+const policyOrder: InsuranceCategory[] = ['Hus og innbo', 'Bil', 'Familie og barn', 'Reise', 'Bedrift']
 const actionClass = 'w-full rounded-sm text-base font-bold whitespace-normal'
 
 function CoverageList({ title, items, excluded = false }: { title: string; items: string[]; excluded?: boolean }) {
@@ -69,8 +69,9 @@ function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave
       </section>
       <PolicyNote>Veihjelp har du ikke brukt på 3 år, men den er billig. Leiebil trenger du kanskje ikke.</PolicyNote>
     </> : <>
-      {insurance.includes && <CoverageList title="Dekker" items={insurance.includes} />}
-      {insurance.excludes && <CoverageList title="Dekker ikke" items={insurance.excludes} excluded />}
+      {(insurance.coverageSummary?.includes ?? insurance.includes) && <CoverageList title="Dekker" items={insurance.coverageSummary?.includes ?? insurance.includes!} />}
+      {(insurance.coverageSummary?.excludes ?? insurance.excludes) && <CoverageList title="Dekker ikke" items={insurance.coverageSummary?.excludes ?? insurance.excludes!} excluded />}
+      {insurance.optionalCoverages && <section className="w-full" aria-label="Lagrede tilvalg"><h2 className="policy-eyebrow">Tilvalg i demoprofilen</h2>{Object.entries(insurance.optionalCoverages).map(([option, enabled]) => <p key={option} className="mt-3 text-sm">{optionLabels[option] ?? option}: {enabled ? 'Valgt' : 'Ikke valgt'}</p>)}</section>}
       {isWork && <PolicyNote locked>Dekningene kan ikke endres her. Avtalen styres av arbeidsgiveren din.</PolicyNote>}
       {!isWork && <PolicyNote>Dette er en forenklet oversikt over en fiktiv demoavtale. Spør meg om du vil vite mer om dekningene.</PolicyNote>}
     </>}
@@ -98,6 +99,9 @@ export default function Home() {
   const firstName = customer?.name.split(' ')[0]
   const initials = customer?.name.split(' ').map((part) => part[0]).slice(0, 2).join('')
 
+  if (params.has('steg')) return <Navigate to={`/onboarding?steg=${encodeURIComponent(params.get('steg') ?? '1')}`} replace />
+  if (state && !state.onboarding.completed) return <Navigate to="/onboarding" replace />
+
   function saveCar(options: Record<string, boolean>) {
     if (!state || !insurance) return
     const updated = Object.entries(options).reduce((current, [option, enabled]) => applyMockAction(current, { type: 'set-coverage-option', coverageId: insurance.coverageId, option, enabled }), state.customer)
@@ -116,17 +120,20 @@ export default function Home() {
               <DialogContent className="vekter-theme"><DialogHeader><DialogTitle>{customer.name}</DialogTitle><DialogDescription>Fiktiv kundeprofil · Vekter’n prototype</DialogDescription></DialogHeader>
                 <p className="text-sm leading-6">Alle priser, avtalevalg og opplysninger i oversikten er demodata. Endringer lagres bare i denne nettleseren, aldri i reelle forsikringsavtaler.</p>
                 <p className="text-sm leading-6 text-muted-foreground">«100 % dekket» er en illustrasjon fra prototypen, ikke en vurdering av forsikringsbehovet ditt.</p>
-                <Button asChild><Link to="/chat">Åpne samtalerommet</Link></Button><Link to="/chat" className="text-sm text-muted-foreground underline">Administrer samtaler og tilbakestill demodata i Om Vekter’n</Link><Link to="/components" className="text-sm text-muted-foreground underline">Komponentbibliotek</Link>
+                <Button asChild><Link to="/chat">Åpne samtalerommet</Link></Button><Link to="/onboarding?steg=2" className="text-sm text-muted-foreground underline">Se introduksjonen på nytt</Link><Link to="/chat" className="text-sm text-muted-foreground underline">Administrer samtaler og tilbakestill demodata i Om Vekter’n</Link><Link to="/components" className="text-sm text-muted-foreground underline">Komponentbibliotek</Link>
               </DialogContent>
             </Dialog>
           </header>
           <CoverageRing value={100} />
           <p className="font-display text-[32px] leading-[39px]">100 % dekket</p>
-          <p className="text-center text-sm leading-[21px] text-muted-foreground">{customer.insurances.length} forsikringer fra {new Set(customer.insurances.map((item) => item.provider)).size} selskaper · kr {money(total)} / mnd</p>
+          <p className="text-center text-sm leading-[21px] text-muted-foreground">{policyOrder.filter((category) => customer.insurances.some((item) => item.category === category)).length} forsikringsområder fra {new Set(customer.insurances.map((item) => item.provider)).size} kilder · kr {money(total)} / mnd</p>
           <nav aria-label="Forsikringene dine" className="w-full">
-            {policyOrder.map((id) => customer.insurances.find((item) => item.coverageId === id)).filter((item): item is MockInsurance => !!item).map((item) => {
-              const Icon = icons[item.coverageId as keyof typeof icons] ?? House
-              return <InsuranceRow key={item.coverageId} icon={<Icon strokeWidth={1.5} />} title={item.displayName} provider={item.provider} price={item.employer ? undefined : `kr ${money(item.monthlyPriceNok)}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />
+            {policyOrder.map((category) => {
+              const policies = customer.insurances.filter((item) => item.category === category)
+              if (!policies.length) return null
+              const item = policies[0]
+              const Icon = icons[category]
+              return <div key={category}><InsuranceRow icon={<Icon strokeWidth={1.5} />} title={category} provider={item.employer ? 'Via jobb' : item.provider} price={item.employer ? undefined : `kr ${money(policies.reduce((sum, policy) => sum + policy.monthlyPriceNok, 0))}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />{policies.length > 1 && <div className="flex gap-4 py-2 pl-9">{policies.map((policy) => <Link key={policy.coverageId} to={`/?insurance=${encodeURIComponent(policy.coverageId)}`} className="text-sm text-muted-foreground underline underline-offset-4">{policy.displayName}</Link>)}</div>}</div>
             })}
           </nav>
         </div>
