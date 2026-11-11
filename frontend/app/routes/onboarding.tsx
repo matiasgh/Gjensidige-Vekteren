@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
 import { ArrowRight, Bell, Briefcase, CarFront, Check, Circle, Eye, Hand, House, Plus } from 'lucide-react'
 import type { Route } from './+types/onboarding'
-import { mockCustomer } from '~/lib/mock-customer.server'
+import type { MockCustomer } from '~/lib/mock-customer'
+import { MAX_PRIORITIES, MAX_PRIORITY_LENGTH, type MockState } from '~/lib/mock-state'
+import { saveMockState, useMockState } from '~/lib/use-mock-state'
 import { cn } from '~/lib/utils'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -17,8 +19,7 @@ const sourceOrder: SourceKind[] = ['gjensidige', 'employer', 'other']
 
 export const meta: Route.MetaFunction = () => [{ title: "Kom i gang – Vekter'n" }]
 
-export function loader() {
-  const { firstName, employment, insurances, gapAnalysis } = mockCustomer
+function deriveOnboarding({ firstName, employment, insurances, gapAnalysis }: MockCustomer) {
   const kindOf = (provider: string): SourceKind =>
     provider === 'Gjensidige' ? 'gjensidige' : provider.startsWith('Via jobb') ? 'employer' : 'other'
 
@@ -46,7 +47,7 @@ export function loader() {
   return { firstName, sources, policies, gapAnalysis }
 }
 
-type LoaderData = Route.ComponentProps['loaderData']
+type OnboardingData = ReturnType<typeof deriveOnboarding>
 
 const stepHref = (step: number) => `/?steg=${step}`
 
@@ -55,19 +56,41 @@ function parseStep(value: string | null) {
   return Number.isNaN(step) ? 1 : Math.min(Math.max(step, 1), STEP_COUNT)
 }
 
-export default function Onboarding({ loaderData }: Route.ComponentProps) {
+export default function Onboarding() {
   const [searchParams] = useSearchParams()
   const step = parseStep(searchParams.get('steg'))
+  // Demo state lives in localStorage, so it is only available after hydration.
+  const { state, setState } = useMockState()
 
+  if (step === 1) return <Splash />
+  if (step === 2) return <Intro />
+  if (!state) return <Loading step={step} />
+
+  const data = deriveOnboarding(state.customer)
   switch (step) {
-    case 1: return <Splash />
-    case 2: return <Intro />
-    case 3: return <Priorities />
-    case 4: return <ExistingInsurance sources={loaderData.sources} />
-    case 5: return <ReadingTerms policies={loaderData.policies} />
-    case 6: return <GapAnalysis gaps={loaderData.gapAnalysis} />
-    default: return <Done firstName={loaderData.firstName} />
+    case 3: return <Priorities saved={state.onboarding.priorities} onChange={(priorities) => setState((current) => current && ({ ...current, onboarding: { ...current.onboarding, priorities } }))} />
+    case 4: return <ExistingInsurance sources={data.sources} />
+    case 5: return <ReadingTerms policies={data.policies} />
+    case 6: return <GapAnalysis gaps={data.gapAnalysis} />
+    default: return <Done firstName={data.firstName} onFinish={() => {
+      const next: MockState = { ...state, onboarding: { ...state.onboarding, completed: true } }
+      saveMockState(next)
+      setState(next)
+    }} />
   }
+}
+
+function Loading({ step }: { step: number }) {
+  return (
+    <Screen className="gap-5 px-7 pt-8">
+      {step < STEP_COUNT && <Progress step={step} />}
+      <div role="status" aria-label="Laster" className="flex flex-col gap-4 pt-2">
+        <div className="h-10 w-3/4 animate-pulse rounded-lg bg-card" />
+        <div className="h-5 w-full animate-pulse rounded bg-card" />
+        <div className="h-5 w-2/3 animate-pulse rounded bg-card" />
+      </div>
+    </Screen>
+  )
 }
 
 /** Sunrise backdrop for the splash and the final step (amber is a Figma-only accent, not a theme token). */
@@ -87,8 +110,8 @@ const Progress = ({ step }: { step: number }) => <StepProgress value={step - 1} 
 
 const fadeUp = 'animate-in fade-in slide-in-from-bottom-2 duration-300'
 
-function StepLink({ to, variant = 'default', className, state, children }: { to: string; variant?: 'default' | 'outline'; className?: string; state?: unknown; children: ReactNode }) {
-  return <Button asChild variant={variant} className={cn('w-full text-base font-bold', className)}><Link to={to} state={state}>{children}</Link></Button>
+function StepLink({ to, variant = 'default', className, state, onClick, children }: { to: string; variant?: 'default' | 'outline'; className?: string; state?: unknown; onClick?: () => void; children: ReactNode }) {
+  return <Button asChild variant={variant} className={cn('w-full text-base font-bold', className)}><Link to={to} state={state} onClick={onClick}>{children}</Link></Button>
 }
 
 function Splash() {
@@ -100,7 +123,7 @@ function Splash() {
         <p className="text-xl font-medium text-primary">Vekter'n har våknet</p>
       </div>
       <div className="flex flex-col gap-6 px-7 pb-9">
-        <StepLink to={stepHref(2)} className="shadow-lg">Start</StepLink>
+        <StepLink to={stepHref(2)} className="shadow-lg">Møt Vekter'n</StepLink>
         <p className="text-center text-sm font-medium text-primary-foreground">drevet av Gjensidige</p>
       </div>
     </Screen>
@@ -147,10 +170,12 @@ function joinNorwegian(parts: string[]) {
 
 const bubbleText = 'text-base whitespace-pre-wrap'
 
-function Priorities() {
-  const [selected, setSelected] = useState<string[]>([])
-  const [lastSent, setLastSent] = useState<string[]>([])
-  const [sent, setSent] = useState<string[]>([])
+// Saved priorities are the selected chips (in chip order) followed by free-text entries.
+function Priorities({ saved, onChange }: { saved: string[]; onChange: (priorities: string[]) => void }) {
+  const [selected, setSelected] = useState(() => saved.filter((p) => priorityChips.includes(p)))
+  const [freeText, setFreeText] = useState(() => saved.filter((p) => !priorityChips.includes(p)))
+  const [lastSent, setLastSent] = useState(selected)
+  const [sent, setSent] = useState(freeText)
   const logRef = useRef<HTMLDivElement>(null)
 
   // Only runs after the user sends something, so the reply is in view.
@@ -160,8 +185,15 @@ function Priorities() {
 
   const chipsChanged = selected.length > 0 && selected.join('|') !== lastSent.join('|')
 
+  function persist(chips: string[], texts: string[]) {
+    const ordered = priorityChips.filter((c) => chips.includes(c))
+    onChange([...ordered, ...texts].slice(0, MAX_PRIORITIES))
+  }
+
   function toggle(chip: string) {
-    setSelected((current) => (current.includes(chip) ? current.filter((c) => c !== chip) : [...current, chip]))
+    const next = selected.includes(chip) ? selected.filter((c) => c !== chip) : [...selected, chip]
+    setSelected(next)
+    persist(next, freeText)
   }
 
   function send(text: string) {
@@ -171,6 +203,12 @@ function Priorities() {
     if (!message) return
     setSent((current) => [...current, message])
     setLastSent(selected)
+    const written = text.trim().slice(0, MAX_PRIORITY_LENGTH)
+    if (written && !freeText.includes(written)) {
+      const texts = [...freeText, written]
+      setFreeText(texts)
+      persist(selected, texts)
+    }
   }
 
   return (
@@ -209,7 +247,7 @@ const sourceIcons = { gjensidige: House, employer: Briefcase, other: CarFront }
 
 const statusDot = 'flex size-7 shrink-0 items-center justify-center rounded-full'
 
-function ExistingInsurance({ sources }: { sources: LoaderData['sources'] }) {
+function ExistingInsurance({ sources }: { sources: OnboardingData['sources'] }) {
   return (
     <Screen className="gap-[18px] px-7 pt-8">
       <Progress step={4} />
@@ -248,7 +286,7 @@ const REDUCED_MOTION_HOLD_MS = 1000
 
 // Step 5 is a loading step: it moves on to step 6 by itself, but only when
 // the user just arrived from step 4. Back/refresh/deep links show the result.
-function ReadingTerms({ policies }: { policies: LoaderData['policies'] }) {
+function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
   const navigate = useNavigate()
   const navigationType = useNavigationType()
   const location = useLocation()
@@ -298,7 +336,7 @@ function ReadingTerms({ policies }: { policies: LoaderData['policies'] }) {
   )
 }
 
-function GapAnalysis({ gaps }: { gaps: LoaderData['gapAnalysis'] }) {
+function GapAnalysis({ gaps }: { gaps: OnboardingData['gapAnalysis'] }) {
   return (
     <Screen className="gap-4 px-7 pt-8 pb-[30px]">
       <Progress step={6} />
@@ -329,7 +367,7 @@ function GapAnalysis({ gaps }: { gaps: LoaderData['gapAnalysis'] }) {
   )
 }
 
-function Done({ firstName }: { firstName: string }) {
+function Done({ firstName, onFinish }: { firstName: string; onFinish: () => void }) {
   return (
     <Screen style={sunrise(100)}>
       <div className="flex flex-1 flex-col items-center justify-center gap-[18px] px-8 text-center">
@@ -338,7 +376,7 @@ function Done({ firstName }: { firstName: string }) {
         <p className="text-foreground/85">Fra nå passer jeg på. Jeg sier fra når livet endrer seg, og du bestemmer alltid.</p>
       </div>
       <div className="px-7 pb-11">
-        <StepLink to="/chat">Gå til oversikten</StepLink>
+        <StepLink to="/chat" onClick={onFinish}>Gå til oversikten</StepLink>
       </div>
     </Screen>
   )
