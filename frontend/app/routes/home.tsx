@@ -6,8 +6,7 @@ import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
 import { AdvisorNote, AssistantIdentity, AssistantMark, ChatBubble, ChatComposer } from '~/components/vekter'
 import { applyMockAction, isMockAction } from '~/lib/mock-actions'
-import { createDefaultCustomer } from '~/lib/mock-customer'
-import { createConversation, type ChatMessage } from '~/lib/mock-state'
+import { createConversation, createDefaultState, type ChatMessage } from '~/lib/mock-state'
 import { useMockState } from '~/lib/use-mock-state'
 
 const suggestions = [
@@ -31,6 +30,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [conversation, setConversation] = useState(0)
+  const [resetNotice, setResetNotice] = useState('')
   const pendingRef = useRef(false)
   const logRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
@@ -93,10 +93,12 @@ export default function Home() {
     setConversation((value) => value + 1)
   }
 
-  function resetCustomer() {
-    if (pendingRef.current) return
-    setState((current) => current && ({ ...current, customer: createDefaultCustomer() }))
+  function resetAllDemoData() {
+    if (pendingRef.current || !state) return
+    setState(createDefaultState())
     setError('')
+    setConversation((value) => value + 1)
+    setResetNotice('Alle demodata er tilbakestilt. Standardkunden er gjenopprettet og alle samtaler er slettet.')
   }
 
   useEffect(() => {
@@ -131,7 +133,7 @@ export default function Home() {
           <div className="flex items-center gap-2 sm:gap-4">
             <Badge variant="outline" className="hidden sm:inline-flex">Prototype</Badge>
             <Button type="button" variant="ghost" size="icon-lg" onClick={newConversation} disabled={isLoading || !state} aria-label="Ny samtale" className="lg:hidden"><Plus /></Button>
-            <Dialog>
+            <Dialog onOpenChange={() => setResetNotice('')}>
               <DialogTrigger asChild><Button type="button" variant="ghost" size="icon-lg" aria-label="Om Vekter’n"><CircleHelp /></Button></DialogTrigger>
               <DialogContent className="vekter-theme">
                 <DialogHeader><DialogTitle>Om Vekter’n</DialogTitle><DialogDescription>Din digitale forsikringsassistent · hackathonprototype</DialogDescription></DialogHeader>
@@ -140,8 +142,10 @@ export default function Home() {
                 <section className="space-y-3" aria-label="Demoprofil">
                   <h2 className="text-sm font-bold">Demoprofil: {state?.customer.name ?? 'Laster …'}</h2>
                   <ul className="space-y-1 text-sm text-muted-foreground">{state?.customer.insurances.map((insurance) => <li key={insurance.coverageId}>{insurance.type}: {insurance.coverage}{insurance.optionalCoverages && ` · ${Object.entries(insurance.optionalCoverages).filter(([, enabled]) => enabled).map(([option]) => coverageOptionLabels[option]).join(', ') || 'ingen tilvalg'}`}</li>)}</ul>
-                  <Button type="button" variant="outline" disabled={isLoading || !state} onClick={resetCustomer}>Tilbakestill demoprofil</Button>
-                  <p className="text-xs text-muted-foreground">Gjenoppretter standardkunden og forsikringene. Samtalene beholdes som historikk; tidligere endringer i demoprofilen gjelder ikke lenger.</p>
+                  <Button type="button" variant="destructive" disabled={isLoading || !state} onClick={resetAllDemoData}>Tilbakestill alle demodata</Button>
+                  <p className="text-xs text-muted-foreground">Gjenoppretter standardkunden og forsikringene, sletter alle samtaler og starter en ny, tom samtale. Dette kan ikke angres.</p>
+                  {resetNotice && <p role="status" className="text-sm text-primary">{resetNotice}</p>}
+                  {storageError && <p role="alert" className="text-sm text-destructive">{storageError}</p>}
                 </section>
                 <Link to="/components" className="text-sm text-primary underline underline-offset-4">Se komponentbiblioteket</Link>
               </DialogContent>

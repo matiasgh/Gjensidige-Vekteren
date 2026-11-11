@@ -24,6 +24,7 @@ export function useMockState() {
     if (!state) return
     try {
       localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(state))
+      setStorageError('')
     } catch {
       setStorageError('Demodata kunne ikke lagres. Endringer beholdes bare til siden lastes på nytt.')
     }
