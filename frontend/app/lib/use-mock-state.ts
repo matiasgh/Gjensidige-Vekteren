@@ -29,13 +29,13 @@ export function useMockState() {
         else {
           const migrated = migrateLegacyState(parsed)
           if (migrated) initial = migrated
-          else setStorageError('Lagrede demodata var ugyldige og er tilbakestilt.')
+          else setStorageError('Lagrede data var ugyldige og er tilbakestilt.')
         }
       } else if (legacy) {
         initial = migrateLegacyState(JSON.parse(legacy)) ?? initial
       }
     } catch {
-      setStorageError('Kunne ikke lese lagrede demodata. Standardprofilen brukes.')
+      setStorageError('Kunne ikke lese lagrede data. Standardprofilen brukes.')
     }
     setState(initial)
   }, [])
@@ -43,7 +43,7 @@ export function useMockState() {
   useEffect(() => {
     if (!state) return
     if (saveMockState(state)) setStorageError('')
-    else setStorageError('Demodata kunne ikke lagres. Endringer beholdes bare til siden lastes på nytt.')
+    else setStorageError('Data kunne ikke lagres. Endringer beholdes bare til siden lastes på nytt.')
   }, [state])
 
   return { state, setState, storageError }

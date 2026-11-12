@@ -82,7 +82,7 @@ export function toApiMessages(messages: ChatMessage[], firstName: string): ApiCh
   return messages.map(({ role, content, image, blocks, receipt }) => {
     if (image) return { role, content: `[${firstName} sendte et bilde av skaden]` }
     const offer = receipt && getOffer(receipt.offerId)
-    if (receipt && offer) return { role, content: `[${firstName} godkjente ${offer.title}. Appen viste kvitteringen: ${offer.title} er lagt til i demoprofilen, ${receiptLines(receipt).join(', ').toLowerCase()}.]` }
+    if (receipt && offer) return { role, content: `[${firstName} godkjente ${offer.title}. Appen viste kvitteringen: ${offer.title} er lagt til i profilen, ${receiptLines(receipt).join(', ').toLowerCase()}.]` }
     // The server replays cards as reply_with_blocks tool calls, so the model keeps using the tool.
     return blocks ? { role, content, blocks } : { role, content }
   })

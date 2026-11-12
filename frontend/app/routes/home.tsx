@@ -90,16 +90,15 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
       {(insurance.coverageSummary?.includes ?? insurance.includes) && <CoverageList title="Dekker" items={insurance.coverageSummary?.includes ?? insurance.includes!} />}
       {(insurance.coverageSummary?.excludes ?? insurance.excludes) && <CoverageList title="Dekker ikke" items={insurance.coverageSummary?.excludes ?? insurance.excludes!} excluded />}
       {isWork && <PolicyNote locked>Dekningene kan ikke endres her. Avtalen styres av arbeidsgiveren din.</PolicyNote>}
-      {insurance.note && insurance.oneTimePriceNok !== undefined && <PolicyNote>{insurance.note}</PolicyNote>}
       {!isWork && (insurance.oneTimePriceNok !== undefined
-        ? <PolicyNote>Dette er en forenklet oversikt over en fiktiv demoavtale. Spør meg om du vil vite mer om dekningene.</PolicyNote>
+        ? <PolicyNote>Spør meg om du vil vite mer om dekningene.</PolicyNote>
         : <PolicyNote locked>Dekningene kan ikke endres her. Kontakt {insurance.provider} for å endre avtalen.</PolicyNote>)}
     </>}
     <div className="min-h-4 flex-1" />
     {notice && <div role="status" aria-live="polite" className="fixed right-4 bottom-[max(16px,env(safe-area-inset-bottom))] left-4 z-50 flex items-start gap-3 rounded-xl border border-primary/40 bg-card p-4 text-sm shadow-lg lg:left-auto lg:max-w-md"><Check aria-hidden="true" className="size-5 shrink-0 text-primary" /><p className="flex-1">{notice}</p><Button type="button" size="icon-sm" variant="ghost" aria-label="Lukk bekreftelsen" onClick={() => setNotice('')}><X className="size-4" /></Button></div>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {chatError && <p role="alert" className="text-sm text-destructive">{chatError}</p>}
-    {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede demoprofilen.</p>}
+    {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede profilen.</p>}
     {canEdit && <Button onClick={save} disabled={!dirty} className={actionClass}>Lagre endringer</Button>}
     <Button type="button" onClick={() => onAsk(question)} variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}>Spør Vekter’n om {isCar ? 'bilforsikringen' : isWork ? 'reisen' : 'forsikringen'}</Button>
     {isWork && <Button asChild variant="outline" className={`${actionClass} border-[#7f8bc0] bg-transparent`}><Link to={`/chat?question=${encodeURIComponent('Hvilken ekstra reiseforsikring kan jeg vurdere for familien, siden jobbens avtale bare dekker meg?')}`}>Se ekstra dekning for familien</Link></Button>}
@@ -168,14 +167,12 @@ export default function Home() {
     <aside aria-label="Forsikringsoversikt" className={`${insurance || isChat ? 'hidden' : 'flex'} mx-auto min-h-dvh w-full max-w-[393px] flex-col pt-[max(48px,env(safe-area-inset-top))] lg:mx-0 lg:flex lg:h-dvh lg:min-h-0 lg:w-[393px] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-border`}>
       {storageError && <p role="alert" className="px-6 pb-3 text-sm text-destructive">{storageError}</p>}
       {!customer ? <p role="status" className="px-6">Laster forsikringene dine …</p> : <>
-        {params.has('insurance') && !insurance && <p role="alert" className="px-6 pb-3 text-sm text-destructive">Forsikringen finnes ikke i demoprofilen.</p>}
+        {params.has('insurance') && !insurance && <p role="alert" className="px-6 pb-3 text-sm text-destructive">Forsikringen finnes ikke i profilen.</p>}
         <div className="flex flex-1 flex-col items-center gap-3 px-6">
           <header className="flex w-full items-center justify-between">
             <h1 className="font-display text-lg leading-[1.3]">God morgen, {firstName}</h1>
-            <Dialog><DialogTrigger asChild><Button size="icon" variant="secondary" className="size-9 rounded-full bg-card text-sm" aria-label="Åpne demoprofil">{initials}</Button></DialogTrigger>
-              <DialogContent className="vekter-theme"><DialogHeader><DialogTitle>{customer.name}</DialogTitle><DialogDescription>Fiktiv kundeprofil · Vekter’n prototype</DialogDescription></DialogHeader>
-                <p className="text-sm leading-6">Alle priser, avtalevalg og opplysninger i oversikten er demodata. Endringer lagres bare i denne nettleseren, aldri i reelle forsikringsavtaler.</p>
-                <p className="text-sm leading-6 text-muted-foreground">«100 % dekket» er en illustrasjon fra prototypen, ikke en vurdering av forsikringsbehovet ditt.</p>
+            <Dialog><DialogTrigger asChild><Button size="icon" variant="secondary" className="size-9 rounded-full bg-card text-sm" aria-label="Åpne profil">{initials}</Button></DialogTrigger>
+              <DialogContent className="vekter-theme"><DialogHeader><DialogTitle>{customer.name}</DialogTitle><DialogDescription>Profilen din hos Vekter’n</DialogDescription></DialogHeader>
                 <Button asChild><Link to="/chat">Åpne samtalerommet</Link></Button><Link to="/onboarding?steg=2" className="text-sm text-muted-foreground underline">Se introduksjonen på nytt</Link><Link to="/chat" className="text-sm text-muted-foreground underline">Administrer samtaler og tilbakestill demodata i Om Vekter’n</Link><Link to="/components" className="text-sm text-muted-foreground underline">Komponentbibliotek</Link>
               </DialogContent>
             </Dialog>
