@@ -32,6 +32,10 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
       }
       insurance.coverageId = action.targetCoverageId
       insurance.coverage = levels[action.targetCoverageId]
+      // Hus Pluss is recommended for rot and pest damage, so the add-on comes with the upgrade.
+      if (action.targetCoverageId === 'building-plus' && insurance.optionalCoverages && Object.hasOwn(insurance.optionalCoverages, 'rotAndPestAddon')) {
+        insurance.optionalCoverages.rotAndPestAddon = true
+      }
       insurance.monthlyPriceNok = insuranceMonthlyPrice(insurance)
       break
     }
@@ -60,8 +64,9 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
   return next
 }
 
-// Fictitious monthly surcharge for coverage levels above the seed level.
-export const coverageLevelSurchargeNok: Record<string, number> = { 'building-plus': 90 }
+// Fictitious monthly surcharge on top of the itemised coverages. For Hus Pluss it is 35 kr, so with the
+// 55 kr rot add-on switched on the total rises 90 kr (250 -> 340).
+export const coverageLevelSurchargeNok: Record<string, number> = { 'building-plus': 35 }
 
 export function insuranceMonthlyPrice(insurance: MockInsurance, options = insurance.optionalCoverages ?? {}) {
   return insurance.coverages

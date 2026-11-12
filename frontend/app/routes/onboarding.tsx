@@ -5,7 +5,7 @@ import type { Route } from './+types/onboarding'
 import type { MockCustomer } from '~/lib/mock-customer'
 import { MAX_PRIORITIES, MAX_PRIORITY_LENGTH, type MockState } from '~/lib/mock-state'
 import { lowerFirst, priorityLabels, tipsFor } from '~/lib/priority-options'
-import { applyMockAction, coverageLevelSurchargeNok } from '~/lib/mock-actions'
+import { applyMockAction } from '~/lib/mock-actions'
 import { saveMockState, useMockState } from '~/lib/use-mock-state'
 import { cn } from '~/lib/utils'
 import { Badge } from '~/components/ui/badge'
@@ -340,18 +340,23 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
 // Step 6 follows a full coverage ring, so it gives advice instead of gaps:
 // tips for what the customer chose in step 3, topped up with general ones.
 // While a Hus Pluss upgrade is proposed, the heading says the customer is almost fully covered.
+const upgradeAction = { type: 'set-coverage-level', coverageId: 'building', targetCoverageId: 'building-plus' } as const
+
 function Tips({ state, setState }: { state: MockState; setState: ReturnType<typeof useMockState>['setState'] }) {
   const tips = tipsFor(state.onboarding.priorities)
   const [accepted, setAccepted] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [priceBefore, setPriceBefore] = useState<number>()
   const building = state.customer.insurances.find(({ coverageId }) => coverageId === 'building' || coverageId === 'building-plus')
   const showUpgrade = building && (accepted || (building.coverageId === 'building' && !dismissed))
   const proposing = showUpgrade && !accepted
-  const newPrice = building && (accepted ? building.monthlyPriceNok : applyMockAction(state.customer, { type: 'set-coverage-level', coverageId: 'building', targetCoverageId: 'building-plus' }).insurances.find(({ displayName }) => displayName === building.displayName)!.monthlyPriceNok)
+  const proposed = building?.coverageId === 'building' ? applyMockAction(state.customer, upgradeAction).insurances.find(({ coverageId }) => coverageId === 'building-plus') : undefined
+  const newPrice = accepted ? building?.monthlyPriceNok : proposed?.monthlyPriceNok
   function accept() {
-    const next: MockState = { ...state, customer: applyMockAction(state.customer, { type: 'set-coverage-level', coverageId: 'building', targetCoverageId: 'building-plus' }) }
+    const next: MockState = { ...state, customer: applyMockAction(state.customer, upgradeAction) }
     saveMockState(next)
     setState(next)
+    setPriceBefore(building?.monthlyPriceNok)
     setAccepted(true)
   }
   return (
@@ -362,7 +367,7 @@ function Tips({ state, setState }: { state: MockState; setState: ReturnType<type
       {showUpgrade && newPrice !== undefined && (
         <UpgradeProposal
           from="Hus" to="Hus Pluss" upgraded={accepted} onAccept={accept} onDismiss={() => setDismissed(true)}
-          currentPriceNok={accepted ? newPrice - coverageLevelSurchargeNok['building-plus'] : building.monthlyPriceNok} newPriceNok={newPrice}
+          currentPriceNok={accepted ? priceBefore ?? building.monthlyPriceNok : building.monthlyPriceNok} newPriceNok={newPrice}
           reason={`Huset ditt er fra ${state.customer.home.builtYear}. Hus Pluss dekker også råtesopp, skadeinsekter, våtrom og følgeskader etter lekkasje – skader som er vanligere og dyrere i eldre hus.`}
         />
       )}
