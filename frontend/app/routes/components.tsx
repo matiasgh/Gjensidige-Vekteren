@@ -8,7 +8,8 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from '~/components/ui/input'
 import { Separator } from '~/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { AdvisorNote, AssistantIdentity, ChatBubble, ChatComposer, CoverageRing, CoverageRow, InsuranceRow, StepProgress } from '~/components/vekter'
+import { AdvisorNote, ApprovedBadge, AssistantIdentity, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, CoverageRing, CoverageRow, DetailRow, InsuranceRow, QuickReplies, StaticMap, StatusCheck, StepProgress } from '~/components/vekter'
+import { EXAMPLE_DAMAGE_IMAGE } from '~/lib/image'
 
 export const meta = () => [{ title: 'Komponentbibliotek · Vekter’n' }]
 
@@ -37,6 +38,30 @@ function ChatExample() {
   return <div className="space-y-4"><AssistantIdentity /><Separator /><ChatBubble role="user">Jeg skal til Thailand med familien. Er vi dekket?</ChatBubble><ChatBubble role="assistant">Jobbens reiseforsikring gjelder deg. Barna er ikke med på avtalen.</ChatBubble><AdvisorNote>Handlinger krever alltid at du godkjenner. Dette eksempelet kaller ikke AI-tjenesten.</AdvisorNote><div role="log" aria-label="Eksempelsamtale" className="max-h-64 space-y-3 overflow-y-auto">{messages.map((message, index) => <ChatBubble key={index} role="user">{message}</ChatBubble>)}</div><ChatComposer onSend={(message) => setMessages([...messages, message])} /></div>
 }
 
+function DamageFlowExample() {
+  const [reply, setReply] = useState('')
+  const [attachOpen, setAttachOpen] = useState(false)
+  const [photo, setPhoto] = useState(EXAMPLE_DAMAGE_IMAGE)
+  return <div className="space-y-4">
+    <ChatBubble role="assistant">Å nei. Er alle uskadet?</ChatBubble>
+    <QuickReplies options={['Alle er uskadet', 'Noen er skadet']} onSelect={setReply} />
+    <p role="status" className="text-sm text-muted-foreground">{reply ? `Valgt: ${reply}` : 'Velg et svar.'}</p>
+    <ChatImageBubble src={photo} alt="Eksempelbilde av en bulk" />
+    <ChatComposer placeholder="Skriv eller legg ved bilde …" onAttach={() => setAttachOpen(true)} onSend={() => undefined} />
+    <AttachSheet open={attachOpen} onOpenChange={setAttachOpen} onImage={setPhoto} />
+  </div>
+}
+
+function FlowPartsExample() {
+  const [damage, setDamage] = useState('Bulk, høyre bakdør')
+  return <div className="space-y-4">
+    <dl><DetailRow label="Skade" value={damage} onSave={setDamage} /><DetailRow label="Dekning" value="Kasko" /></dl>
+    <StaticMap pins={[{ x: 50, y: 50, kind: 'you' }, { x: 25, y: 34 }, { x: 75, y: 40 }]} />
+    <ApprovedBadge />
+    <ul><StatusCheck done>Bergeren er varslet</StatusCheck><StatusCheck done={false}>Ola ringer deg før han kommer</StatusCheck></ul>
+  </div>
+}
+
 export default function Components() {
   const [step, setStep] = useState(2)
   const [selected, setSelected] = useState('')
@@ -51,6 +76,8 @@ export default function Components() {
           <Specimen title="Forsikringsliste" description="Klikkbare rader med leverandør og pris.">{[{ title: 'Hus og innbo', icon: <House />, provider: 'Gjensidige', price: 'kr 410' }, { title: 'Bil', icon: <CarFront />, provider: 'Gjensidige', price: 'kr 290' }, { title: 'Familie og barn', icon: <Users />, provider: 'Gjensidige', price: 'kr 120' }, { title: 'Reise', icon: <Plane />, provider: 'Via jobb' }].map((item) => <InsuranceRow key={item.title} {...item} onClick={() => setSelected(item.title)} />)}<p role="status" className="text-sm text-muted-foreground">{selected ? `${selected} valgt i eksempelet.` : 'Velg en forsikring.'}</p></Specimen>
           <Specimen title="Dekningsring" description="Tilgjengelig prosentvis status, som én bue eller segmentert per forsikring."><CoverageRing value={100} className="mx-auto" /><CoverageRing value={60} segments={5} className="mx-auto" /><p className="text-center text-2xl font-bold">100 % dekket</p><p className="text-center text-sm text-muted-foreground">Eksempeldata · 5 forsikringer</p></Specimen>
           <Specimen title="Samtale" description="Meldinger og sendefelt med Enter / Shift+Enter."><ChatExample /></Specimen>
+          <Specimen title="Skadeflyt i chat" description="Hurtigsvar, bildeboble og «Legg ved»-ark. Bildet nedskaleres og blir i nettleseren."><DamageFlowExample /></Specimen>
+          <Specimen title="Flytskjermer" description="Redigerbar detaljrad, statisk kart, godkjent-merke og statuslinjer fra skademelding, verksted og berging."><FlowPartsExample /></Specimen>
         </TabsContent>
         <TabsContent value="patterns"><div className="grid items-start gap-8 md:grid-cols-2"><InsuranceExample /><Specimen title="Assistent i samtalen" description="Mønster med identitet, meldinger, råd og skrivefelt."><ChatExample /></Specimen></div></TabsContent>
         <TabsContent value="tokens"><Specimen title="Temagrunnlag" description="Typografi og mål er lest fra Figma. Fargeverdiene er visuelle anslag og må bekreftes mot originalen."><div className="grid gap-4 sm:grid-cols-3">{['background', 'card', 'primary', 'secondary', 'muted', 'border'].map((token) => <div key={token} className="rounded-xl border p-4"><div className="mb-3 h-16 rounded-lg border" style={{ background: `var(--${token})` }} /><code className="text-sm">--{token}</code></div>)}</div><Separator /><h2 className="font-display text-3xl">Gjensidige Display</h2><p>Gjensidige Sans · brødtekst 16 / 24 · liten tekst 14 / 21</p><p className="text-sm text-muted-foreground">Mobilramme: 393px · sidemarg: 24–28px · primærknapp: 52px · bryter: 48 × 28px. Mellomrom og hjørner styres med Tailwind og semantiske CSS-variabler.</p></Specimen></TabsContent>

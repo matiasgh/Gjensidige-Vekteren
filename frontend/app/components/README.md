@@ -5,7 +5,7 @@ Open `/components` for the interactive catalog. It uses local demo state and nev
 ## Layers
 
 - `ui/`: actual shadcn/ui registry components, owned by this repository. Radix provides accessible switch, dialog, and tab behavior. `cn` combines clsx and tailwind-merge.
-- `vekter/`: product patterns composed from those primitives: `AssistantIdentity`, `AssistantMark`, `AdvisorNote`, `CoverageRow`, `InsuranceRow`, `CoverageRing`, `StepProgress`, `ChatBubble`, and `ChatComposer`.
+- `vekter/`: product patterns composed from those primitives: `AssistantIdentity`, `AssistantMark`, `AdvisorNote`, `CoverageRow`, `InsuranceRow`, `CoverageRing`, `StepProgress`, `ChatBubble`, `ChatImageBubble`, `ChatComposer` (optional `onAttach` shows a **+** button), `AttachSheet` (the “Legg ved” bottom sheet), and the flow-screen parts `FlowScreen`, `DetailRow` (inline Endre), `StaticMap` (decorative illustration, not a real map), `StatusCheck`, `QuickReplies` and `ApprovedBadge`.
 - `app/app.css`: semantic theme tokens. Add `vekter-theme` to a container to opt into the prototype's navy/yellow appearance. The onboarding (`/onboarding`), overview (`/`), chat (`/chat`) and catalog all use this theme; the root defaults remain light for other consumers.
 
 ```tsx

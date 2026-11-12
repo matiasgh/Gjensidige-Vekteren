@@ -10,6 +10,9 @@ import { optionLabels, type InsuranceCategory, type MockInsurance } from '~/lib/
 import { saveMockState, useMockState } from '~/lib/use-mock-state'
 import { createConversation } from '~/lib/mock-state'
 import ChatRoom from '~/components/vekter/chat-room'
+import CarDamageScreen, { type CarDamageFlow } from '~/components/vekter/car-damage-screen'
+
+const damageFlows: Record<string, CarDamageFlow> = { '/skade/meld': 'meld', '/skade/verksted': 'verksted', '/skade/berging': 'berging' }
 
 const money = (value: number) => value.toLocaleString('nb-NO')
 const icons = { 'Hus og innbo': House, Bil: CarFront, 'Familie og barn': Users, Reise: Plane, Bedrift: BriefcaseBusiness }
@@ -91,7 +94,9 @@ export default function Home() {
   const store = useMockState()
   const { state, setState, storageError } = store
   const location = useLocation()
-  const isChat = location.pathname === '/chat'
+  const damageFlow = damageFlows[location.pathname]
+  // Follow-up screens of the car damage flow live in the chat column.
+  const isChat = location.pathname === '/chat' || !!damageFlow
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [message, setMessage] = useState('')
@@ -167,7 +172,7 @@ export default function Home() {
       </>}
     </aside>
     <div className={`${insurance || isChat ? 'block' : 'hidden'} min-w-0 flex-1 lg:block lg:h-dvh lg:overflow-y-auto`}>
-      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCar} /></div> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
+      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCar} /></div> : damageFlow ? <CarDamageScreen key={location.pathname} flow={damageFlow} state={state} setState={setState} /> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
     </div>
   </div>
 }

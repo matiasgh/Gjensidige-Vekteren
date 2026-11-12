@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { ArrowLeft, ArrowRight, CarFront, CircleHelp, House, LoaderCircle, Plus, ShieldCheck, Umbrella } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CarFront, CircleHelp, House, LoaderCircle, Phone, Plus, ShieldCheck, Umbrella } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
-import { AssistantIdentity, AssistantMark, ChatBubble, ChatComposer } from '~/components/vekter'
+import { AssistantIdentity, AssistantMark, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, QuickReplies } from '~/components/vekter'
+import { analysisText, CAR_DAMAGE_FLOW, carCoverage, carDamageTexts, DAMAGE_PHOTO_CONTENT, type CarDamageKind } from '~/lib/car-damage'
 import { applyMockAction, isMockAction } from '~/lib/mock-actions'
 import { optionLabels } from '~/lib/mock-customer'
-import { createConversation, createDefaultState, type ChatMessage } from '~/lib/mock-state'
+import { createConversation, createDefaultState, toApiMessages, type ChatMessage } from '~/lib/mock-state'
 import type { useMockState } from '~/lib/use-mock-state'
 
 const suggestions = [
@@ -18,16 +19,27 @@ const suggestions = [
 ]
 
 const coverageOptionLabels = optionLabels
+const PHOTO_ANALYSIS_DELAY_MS = 1200
+const awaitingPhotoKinds: (CarDamageKind | undefined)[] = ['damage-start', 'damage-photo-request', 'damage-injured']
+const damageActions = [
+  { to: '/skade/meld', label: 'Meld skade' },
+  { to: '/skade/verksted', label: 'Finn verksted' },
+  { to: '/skade/berging', label: 'Kontakt bilbergning' },
+]
 
 export default function ChatRoom({ state, setState, storageError }: ReturnType<typeof useMockState>) {
   const [searchParams] = useSearchParams()
   const initialQuestion = useRef(searchParams.get('question'))
   const activeConversation = state?.conversations.find(({ id }) => id === state.activeConversationId)
   const messages = activeConversation?.messages ?? []
+  const lastActionsIndex = messages.map(({ kind }) => kind).lastIndexOf('damage-actions')
+  const awaitingPhoto = awaitingPhotoKinds.includes(messages.at(-1)?.kind)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [conversation, setConversation] = useState(0)
   const [resetNotice, setResetNotice] = useState('')
+  const [loadingText, setLoadingText] = useState('Vekter’n tenker …')
+  const [attachOpen, setAttachOpen] = useState(false)
   const pendingRef = useRef(false)
   const logRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
@@ -46,17 +58,21 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, customer: state.customer, priorities: state.onboarding.priorities }),
+        body: JSON.stringify({ messages: toApiMessages(next, state.customer.firstName), customer: state.customer, priorities: state.onboarding.priorities }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? 'Noe gikk galt.')
       if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error('Vekter’n svarte ikke. Prøv igjen.')
       if (!Array.isArray(data.actions) || !data.actions.every(isMockAction)) throw new Error('Vekter’n returnerte en ugyldig endring. Ingen demodata er endret.')
+      // The AI only decides that the car damage flow starts; its first step is scripted.
+      const reply: ChatMessage = data.flow === CAR_DAMAGE_FLOW
+        ? { role: 'assistant', content: carDamageTexts.start, kind: 'damage-start' }
+        : { role: 'assistant', content: data.reply }
       setState((current) => current && ({
         ...current,
         customer: data.actions.reduce(applyMockAction, current.customer),
         conversations: current.conversations.map((item) => item.id === conversationId
-          ? { ...item, messages: [...next, { role: 'assistant', content: data.reply }] }
+          ? { ...item, messages: [...next, reply] }
           : item),
       }))
     } catch (err) {
@@ -65,6 +81,52 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
       pendingRef.current = false
       setIsLoading(false)
     }
+  }
+
+  function setMessages(next: ChatMessage[], conversationId = state?.activeConversationId) {
+    setState((current) => current && ({ ...current, conversations: current.conversations.map((item) => item.id === conversationId ? { ...item, messages: next } : item) }))
+  }
+
+  // Scripted analysis: every photo gets the same Figma description, with the
+  // verdict derived from the current car coverage. The image is never sent anywhere.
+  function analysePhoto(next: ChatMessage[]) {
+    if (pendingRef.current || !state) return
+    const conversationId = state.activeConversationId
+    const coverage = carCoverage(state.customer)
+    pendingRef.current = true
+    setError('')
+    setLoadingText('Vekter’n ser på bildet …')
+    setIsLoading(true)
+    window.setTimeout(() => {
+      setMessages([...next, { role: 'assistant', content: analysisText(coverage), kind: 'damage-analysis' }, { role: 'assistant', content: carDamageTexts.actions, kind: 'damage-actions' }], conversationId)
+      pendingRef.current = false
+      setIsLoading(false)
+      setLoadingText('Vekter’n tenker …')
+    }, PHOTO_ANALYSIS_DELAY_MS)
+  }
+
+  function respond(next: ChatMessage[]) {
+    if (next.at(-1)?.image) analysePhoto(next)
+    else void requestReply(next)
+  }
+
+  function sendPhoto(image: string) {
+    if (pendingRef.current || !state) return
+    const next: ChatMessage[] = [...messages, { role: 'user', content: DAMAGE_PHOTO_CONTENT, image }]
+    setMessages(next)
+    analysePhoto(next)
+  }
+
+  function answerSafety(option: string) {
+    if (pendingRef.current || !state) return
+    const injured = option === carDamageTexts.injuredReply
+    setMessages([...messages, { role: 'user', content: option }, injured
+      ? { role: 'assistant', content: carDamageTexts.injured, kind: 'damage-injured' }
+      : { role: 'assistant', content: carDamageTexts.photoRequest, kind: 'damage-photo-request' }])
+  }
+
+  function scrollToEnd() {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }
 
   function send(text: string) {
@@ -151,11 +213,16 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
               <div className="mx-auto w-full max-w-3xl py-6 sm:py-10">
                 <h1 className="sr-only">Samtale med Vekter’n</h1>
                 <div role="log" aria-label="Samtale" aria-live="polite" className="space-y-4">
-                  {messages.map((message, index) => <ChatBubble key={index} role={message.role} className="break-words"><p className="whitespace-pre-wrap">{message.content}</p></ChatBubble>)}
+                  {messages.map((message, index) => <div key={index} className="space-y-3">
+                    {message.image ? <ChatImageBubble src={message.image} alt="Bilde av skaden" onLoad={scrollToEnd} /> : <ChatBubble role={message.role} className="break-words"><p className="whitespace-pre-wrap">{message.content}</p></ChatBubble>}
+                    {message.kind === 'damage-start' && index === messages.length - 1 && <QuickReplies options={[carDamageTexts.uninjuredReply, carDamageTexts.injuredReply]} onSelect={answerSafety} disabled={isLoading} />}
+                    {message.kind === 'damage-injured' && <Button asChild variant="outline" size="sm" className="h-10 rounded-full border-[#7f8bc0] bg-transparent px-4"><a href="tel:113"><Phone /> Ring 113</a></Button>}
+                    {message.kind === 'damage-actions' && index === lastActionsIndex && <div className="flex flex-col gap-3">{damageActions.map(({ to, label }, actionIndex) => <Button key={to} asChild variant={actionIndex === 0 ? 'default' : 'outline'} className={`h-12 w-full rounded-sm text-base font-bold ${actionIndex > 0 ? 'border-[#7f8bc0] bg-transparent' : ''}`}><Link to={to}>{label}</Link></Button>)}</div>}
+                  </div>)}
                 </div>
-                {isLoading && <p role="status" className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> Vekter’n tenker …</p>}
-                {!isLoading && !error && messages.at(-1)?.role === 'user' && <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void requestReply(messages)}>Hent svar</Button>}
-                {error && <div role="alert" className="mt-5 rounded-xl border border-destructive/50 bg-card p-4"><p className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" size="sm" disabled={isLoading} className="mt-3" onClick={() => void requestReply(messages)}>Prøv igjen</Button></div>}
+                {isLoading && <p role="status" className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> {loadingText}</p>}
+                {!isLoading && !error && messages.at(-1)?.role === 'user' && <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => respond(messages)}>Hent svar</Button>}
+                {error && <div role="alert" className="mt-5 rounded-xl border border-destructive/50 bg-card p-4"><p className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" size="sm" disabled={isLoading} className="mt-3" onClick={() => respond(messages)}>Prøv igjen</Button></div>}
               </div>
             ) : (
               <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center py-10 sm:py-14">
@@ -183,7 +250,8 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
 
           <div className="shrink-0 border-t border-border/40 bg-background/70 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8 sm:pt-5">
             <div className="mx-auto w-full max-w-3xl">
-              <ChatComposer key={conversation} inputRef={composerRef} onSend={send} disabled={isLoading || !state} />
+              <ChatComposer key={conversation} inputRef={composerRef} onSend={send} onAttach={() => setAttachOpen(true)} disabled={isLoading || !state} placeholder={awaitingPhoto ? 'Skriv eller legg ved bilde …' : undefined} />
+              <AttachSheet open={attachOpen} onOpenChange={setAttachOpen} onImage={sendPhoto} />
               <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">Vekter’n kan ta feil. Sjekk viktig informasjon.</p>
             </div>
           </div>

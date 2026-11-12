@@ -1,6 +1,12 @@
+import { carDamageKinds, MAX_IMAGE_DATA_URL_LENGTH, type CarDamageKind } from './car-damage'
 import { createDefaultCustomer, isMockCustomer, type MockCustomer } from './mock-customer'
 
-export type ChatMessage = { role: 'user' | 'assistant'; content: string }
+// `image` is a downscaled JPEG data URL kept only in the browser; `kind` marks
+// scripted flow messages so the chat can render their buttons. Both are optional,
+// so stored v2 conversations remain valid.
+export type ChatMessage = { role: 'user' | 'assistant'; content: string; image?: string; kind?: CarDamageKind }
+/** The text-only shape accepted by /api/chat. */
+export type ApiChatMessage = { role: 'user' | 'assistant'; content: string }
 export type MockConversation = { id: string; messages: ChatMessage[] }
 // Priorities are the step 3 chips plus anything the customer wrote there.
 export type OnboardingState = { completed: boolean; priorities: string[] }
@@ -34,6 +40,17 @@ export function isChatMessage(value: unknown): value is ChatMessage {
   if (!value || typeof value !== 'object') return false
   const message = value as Record<string, unknown>
   return (message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string' && !!message.content.trim()
+    && (message.image === undefined || (typeof message.image === 'string' && message.image.startsWith('data:image/') && message.image.length <= MAX_IMAGE_DATA_URL_LENGTH))
+    && (message.kind === undefined || (carDamageKinds as readonly unknown[]).includes(message.kind))
+}
+
+export function isApiChatMessage(value: unknown): value is ApiChatMessage {
+  return isChatMessage(value) && Object.keys(value).every((key) => key === 'role' || key === 'content')
+}
+
+// Images never leave the browser: the AI only gets a short note that a photo was sent.
+export function toApiMessages(messages: ChatMessage[], firstName: string): ApiChatMessage[] {
+  return messages.map(({ role, content, image }) => ({ role, content: image ? `[${firstName} sendte et bilde av skaden]` : content }))
 }
 
 export function isPriorityList(value: unknown): value is string[] {
