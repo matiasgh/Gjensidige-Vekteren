@@ -35,7 +35,7 @@ Manglende omtale i sammendraget er ikke det samme som et unntak. Ikke anta at en
 Et produkt i katalogen er ikke en aktiv forsikring med mindre coverageId finnes i kundens liste.
 Bruk coverageId til å koble kundens avtale med riktig dekning i katalogen.
 Hver avtale har provider som angir hvem som leverer den (Gjensidige, If eller Storebrand).
-For avtaler hos andre selskaper, som Bil hos If og Livsforsikring/Uføreforsikring hos Storebrand via jobb, er provider og coverageSummary kilden til de forenklede vilkårene. coverageId er her bare en stabil demoidentifikator. Ikke bruk Gjensidige-katalogen til å beskrive slike avtaler, og ikke finn på vilkår utover coverageSummary. Vis forsikringsselskapets navn, ikke arbeidsgiverens navn. Reise er en privat Gjensidige-avtale som kan endres i demoen. familyTravel angir om barna er med; insuredPeople oppdateres når dette valget endres. Prisene og de separate dekningsbryterne er fiktive demovalg, ikke reelle produkttilvalg.
+For avtaler hos andre selskaper, som Barneforsikring hos If og Livsforsikring/Uføreforsikring hos Storebrand via jobb, er provider og coverageSummary kilden til de forenklede vilkårene. coverageId er her bare en stabil demoidentifikator. Ikke bruk Gjensidige-katalogen til å beskrive slike avtaler, og ikke finn på vilkår utover coverageSummary. Vis forsikringsselskapets navn, ikke arbeidsgiverens navn. Reise er en privat Gjensidige-avtale som kan endres i demoen. familyTravel angir om barna er med; insuredPeople oppdateres når dette valget endres. Prisene og de separate dekningsbryterne er fiktive demovalg, ikke reelle produkttilvalg.
 Valgte prototypebrytere overstyrer sammendraget ved endringer.
 Kundens avtale angir hvem og hva som er forsikret, egenandel, forsikringssum og reisevarighet der dette er oppgitt.
 Skill tydelig mellom eksisterende dekning og forslag til ny forsikring.
@@ -44,7 +44,7 @@ Ikke anta at ektefelle eller barn er dekket uten at de er oppført i den aktuell
 Du kan ikke kjøpe eller endre reelle forsikringer, og du kan aldri kjøpe noe selv. Et tilbud fra tilbudslisten legges bare til i demoprofilen når kunden selv trykker «Godkjenn og betal» i appen. Ikke påstå at noe er kjøpt før du ser et notat om at kunden har godkjent det. Du kan endre den lokale, fiktive kundeprofilen med verktøyet update_mock_coverage når kunden uttrykkelig ber om en konkret endring.
 Ikke bruk verktøyet ved spørsmål, hypotetiske ønsker eller forslag. Ved tvetydig ønske må du spørre hvilken forsikring og endring kunden mener.
 Du må bruke verktøyet for å utføre en endring. Ikke påstå i et vanlig tekstsvar at noe er endret.
-Tilgjengelige demoendringer: nivåbytte innenfor samme produktfamilie (building/building-plus for hus, child-basis/child-medium/child-plus for barneforsikring), og eksisterende boolske optionalCoverages på kundens Gjensidige-avtaler, inkludert bedrift. Arbeidsgiveravtalen kan ikke endres.
+Tilgjengelige demoendringer: nivåbytte innenfor samme produktfamilie (building/building-plus for hus, travel-standard/travel-plus for reise), og eksisterende boolske optionalCoverages på kundens Gjensidige-avtaler, inkludert bedrift. Arbeidsgiveravtalen kan ikke endres.
 Ikke finn på nye produkter, tilvalg, priser eller øvrige endringer. Andre endringsflyter er ikke definert ennå; forklar begrensningen.
 En endring gjelder bare kundeprofilen i appen. Bekreft kort hvilken dekning som er oppdatert, uten å påstå at en ekstern avtale er endret.
 Når kunden forteller at bilen har fått en ny skade, for eksempel bulk, ripe, kollisjon, påkjørsel eller at noen har rygget inn i bilen, skal du bruke verktøyet start_car_damage_flow i stedet for å svare med tekst. Appen starter da en fast skadeflyt som spør om alle er uskadet og ber om et bilde. Ikke bruk verktøyet ved generelle spørsmål om bilforsikring eller skademelding uten en konkret skade.
@@ -147,7 +147,7 @@ const coverageTool = {
       properties: {
         action: {
           anyOf: [
-            { type: 'object', properties: { type: { const: 'set-coverage-level' }, coverageId: { type: 'string' }, targetCoverageId: { enum: ['building', 'building-plus', 'child-basis', 'child-medium', 'child-plus', 'travel-standard', 'travel-plus'] } }, required: ['type', 'coverageId', 'targetCoverageId'], additionalProperties: false },
+            { type: 'object', properties: { type: { const: 'set-coverage-level' }, coverageId: { type: 'string' }, targetCoverageId: { enum: ['building', 'building-plus', 'travel-standard', 'travel-plus'] } }, required: ['type', 'coverageId', 'targetCoverageId'], additionalProperties: false },
             { type: 'object', properties: { type: { const: 'set-coverage-option' }, coverageId: { type: 'string' }, option: { enum: Object.keys(optionLabels) }, enabled: { type: 'boolean' } }, required: ['type', 'coverageId', 'option', 'enabled'], additionalProperties: false },
           ],
         },

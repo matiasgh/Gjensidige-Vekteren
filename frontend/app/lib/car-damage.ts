@@ -37,19 +37,18 @@ export const money = (value: number) => `kr ${value.toLocaleString('nb-NO')}`
 export function carCoverage(customer: MockCustomer): CarCoverage | null {
   const car = customer.insurances.find((item) => item.category === 'Bil')
   if (!car) return null
-  const ownPolicy = car.provider === 'Gjensidige'
   return {
     vehicle: car.vehicle ?? 'Bilen din',
     registrationNumber: car.registrationNumber ?? '',
-    kasko: ownPolicy && !!car.optionalCoverages?.collision,
-    roadside: ownPolicy && !!car.optionalCoverages?.roadside,
+    kasko: !!car.optionalCoverages?.collision,
+    roadside: !!car.optionalCoverages?.roadside,
     deductibleNok: car.collisionDeductibleNok ?? 0,
   }
 }
 
 export function analysisText(coverage: CarCoverage | null) {
   const verdict = coverage?.kasko
-    ? `Dette dekkes av kaskoen din. Egenandel er ${money(coverage.deductibleNok)}. Verkstedet bekrefter det endelige tallet.`
+    ? `Dette dekkes av kaskoen din. Egenandel er ${money(coverage.deductibleNok)}. Verkstedet bekrefter det endelige tallet. En kaskoskade kan påvirke bonusen din.`
     : 'Du har ikke kasko på bilen, så denne skaden dekkes ikke av bilforsikringen din. Reparasjonen på verkstedet betaler du selv.'
   return `${carDamageTexts.description}\n\n${verdict}`
 }
@@ -57,9 +56,9 @@ export function analysisText(coverage: CarCoverage | null) {
 export type Workshop = { id: string; name: string; distance: string; day: string; time: string; estimate: string }
 
 export const workshops: Workshop[] = [
-  { id: 'nord', name: 'Bilverksted Nord', distance: '2,1 km', day: 'tirsdag', time: '09:00', estimate: 'kr 7 500 – 9 000' },
-  { id: 'storgata', name: 'Storgata Bil & Lakk', distance: '3,4 km', day: 'onsdag', time: '13:00', estimate: 'kr 8 000 – 9 500' },
-  { id: 'ostbyen', name: 'Østbyen Karosseri', distance: '5,0 km', day: 'torsdag', time: '08:00', estimate: 'kr 7 200 – 8 800' },
+  { id: 'nord', name: 'Bilverksted Nord', distance: '2,1 km', day: 'tirsdag', time: '09:00', estimate: 'kr 14 000 – 16 500' },
+  { id: 'storgata', name: 'Storgata Bil & Lakk', distance: '3,4 km', day: 'onsdag', time: '13:00', estimate: 'kr 15 500 – 18 000' },
+  { id: 'ostbyen', name: 'Østbyen Karosseri', distance: '5,0 km', day: 'torsdag', time: '08:00', estimate: 'kr 14 500 – 17 000' },
 ]
 
 export const towOrder = { driver: 'Ola', etaMinutes: 28 }
