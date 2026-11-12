@@ -42,6 +42,11 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
         throw new Error('Påkrevde dekninger kan ikke slås av.')
       }
       insurance.optionalCoverages[action.option] = action.enabled
+      if (insurance.category === 'Reise' && action.option === 'familyTravel') {
+        insurance.insuredPeople = action.enabled
+          ? [next.name, ...next.family.children.map(({ age }) => `Barn på ${age} år`)]
+          : [next.name]
+      }
       if (insurance.coverageId === 'car-kasko') {
         if (action.option === 'partial' && !action.enabled) insurance.optionalCoverages.collision = false
         if (action.option === 'collision' && action.enabled) insurance.optionalCoverages.partial = true

@@ -22,7 +22,7 @@ type InsuranceRowProps = { icon: ReactNode; title: string; provider?: string; pr
 /** Clickable with `onClick` (price + chevron); static when omitted. `trailing` replaces the price/chevron slot. */
 export function InsuranceRow({ icon, title, provider, price, trailing, onClick, className }: InsuranceRowProps) {
   const content = <>
-    <span aria-hidden="true" className="[&>svg]:size-[22px]">{icon}</span><span className="min-w-0 flex-1"><span className="block font-bold">{title}</span>{provider && <span className="flex items-center gap-1.5 text-sm text-muted-foreground">{onClick && <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', provider.startsWith('Via jobb') ? 'bg-[var(--employer)]' : provider === 'If' ? 'bg-white' : 'bg-primary')} />}{provider}</span>}</span>
+    <span aria-hidden="true" className="[&>svg]:size-[22px]">{icon}</span><span className="min-w-0 flex-1"><span className="block font-bold">{title}</span>{provider && <span className="flex items-center gap-1.5 text-sm text-muted-foreground">{onClick && <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', provider === 'Storebrand' ? 'bg-[var(--employer)]' : provider === 'If' ? 'bg-white' : 'bg-primary')} />}{provider}</span>}</span>
     {trailing ?? <><span className="text-sm">{price ?? '—'}</span>{onClick && <ChevronRight aria-hidden="true" className="size-[18px] text-muted-foreground" />}</>}
   </>
   const classes = cn('flex min-h-18 w-full items-center gap-3 rounded-sm border-b border-border/60 py-3 text-left', className)

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { ArrowLeft, CarFront, Check, House, Plane, Users } from 'lucide-react'
+import { ArrowLeft, CarFront, Check, Heart, House, Plane, ShieldCheck, Users } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
@@ -36,7 +36,7 @@ function InsuranceExample() {
 
 function ChatExample() {
   const [messages, setMessages] = useState<string[]>([])
-  return <div className="space-y-4"><AssistantIdentity /><Separator /><ChatBubble role="user">Jeg skal til Thailand med familien. Er vi dekket?</ChatBubble><ChatBubble role="assistant">Jobbens reiseforsikring gjelder deg. Barna er ikke med på avtalen.</ChatBubble><AdvisorNote>Handlinger krever alltid at du godkjenner. Dette eksempelet kaller ikke AI-tjenesten.</AdvisorNote><div role="log" aria-label="Eksempelsamtale" className="max-h-64 space-y-3 overflow-y-auto">{messages.map((message, index) => <ChatBubble key={index} role="user">{message}</ChatBubble>)}</div><ChatComposer onSend={(message) => setMessages([...messages, message])} /></div>
+  return <div className="space-y-4"><AssistantIdentity /><Separator /><ChatBubble role="user">Jeg skal til Thailand med familien. Er vi dekket?</ChatBubble><ChatBubble role="assistant">Reiseforsikringen hos Gjensidige gjelder deg. Barna er ikke med på avtalen.</ChatBubble><AdvisorNote>Handlinger krever alltid at du godkjenner. Dette eksempelet kaller ikke AI-tjenesten.</AdvisorNote><div role="log" aria-label="Eksempelsamtale" className="max-h-64 space-y-3 overflow-y-auto">{messages.map((message, index) => <ChatBubble key={index} role="user">{message}</ChatBubble>)}</div><ChatComposer onSend={(message) => setMessages([...messages, message])} /></div>
 }
 
 function DamageFlowExample() {
@@ -69,8 +69,8 @@ function TravelFlowExample() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [approved, setApproved] = useState(false)
   return <div className="space-y-4">
-    <ChatBubble role="assistant">Delvis. Jobbens reiseforsikring dekker deg, men ikke barna.</ChatBubble>
-    <CoverageCheck title="Reise via jobb" items={[{ label: 'Sykdom og akutt hjelp, for deg', covered: true }, { label: 'Bagasje og forsinkelse', covered: true }, { label: 'Barna er ikke med', covered: false }, { label: 'Aktiviteter som dykking og scooter', covered: false }]} />
+    <ChatBubble role="assistant">Delvis. Reiseforsikringen hos Gjensidige dekker deg, men ikke barna.</ChatBubble>
+    <CoverageCheck title="Reise · Gjensidige" items={[{ label: 'Sykdom og akutt hjelp på reise', covered: true }, { label: 'Bagasje og forsinkelse', covered: true }, { label: 'Avbestilling', covered: true }, { label: 'Familiedekning', covered: false }]} />
     <TipCard title="Husk reisevaksine" body="Thailand krever ofte vaksiner. Bestill time i god tid før avreise." remindInDays={14} reminderSet={reminder} onRemind={() => setReminder(true)} />
     <OfferCard offer={offer} purchased={approved} onReview={() => setSheetOpen(true)} onDecline={() => undefined} />
     <ApproveOfferSheet offer={offer} open={sheetOpen} onOpenChange={setSheetOpen} onApprove={() => { setApproved(true); setSheetOpen(false) }} />
@@ -89,7 +89,7 @@ export default function Components() {
           <Specimen title="Handlinger" description="52px primærhandling, sekundærknapp og kompakte valg."><Button className="w-full">Kom i gang</Button><Button variant="outline" className="w-full">Ikke nå</Button><div className="flex flex-wrap gap-2"><Button size="sm" className="rounded-full"><Check /> Tre barn</Button><Button variant="outline" size="sm" className="rounded-full">Reiser mye</Button><Button disabled size="sm">Utilgjengelig</Button></div></Specimen>
           <Specimen title="Fremdrift" description="Seks segmenter fra onboardingflyten."><StepProgress value={step} /><p className="text-sm text-muted-foreground">Steg {step} av 6</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={step === 1} onClick={() => setStep(step - 1)}>Tilbake</Button><Button size="sm" disabled={step === 6} onClick={() => setStep(step + 1)}>Fortsett</Button></div><AssistantIdentity /></Specimen>
           <Specimen title="Felt og merker" description="Semantiske farger, feltetikett og tastaturfokus."><label htmlFor="policy" className="text-sm font-medium">Forsikringsselskap</label><Input id="policy" placeholder="Skriv navnet på selskapet" /><div className="flex flex-wrap gap-2"><Badge>Gjensidige</Badge><Badge variant="secondary">Via arbeidsgiver</Badge><Badge variant="outline">Prototype</Badge></div><AdvisorNote>Du bestemmer. Ingenting skjer uten ditt ja.</AdvisorNote></Specimen>
-          <Specimen title="Forsikringsliste" description="Klikkbare rader med leverandør og pris.">{[{ title: 'Hus og innbo', icon: <House />, provider: 'Gjensidige', price: 'kr 410' }, { title: 'Bil', icon: <CarFront />, provider: 'Gjensidige', price: 'kr 290' }, { title: 'Familie og barn', icon: <Users />, provider: 'Gjensidige', price: 'kr 120' }, { title: 'Reise', icon: <Plane />, provider: 'Via jobb' }].map((item) => <InsuranceRow key={item.title} {...item} onClick={() => setSelected(item.title)} />)}<p role="status" className="text-sm text-muted-foreground">{selected ? `${selected} valgt i eksempelet.` : 'Velg en forsikring.'}</p></Specimen>
+          <Specimen title="Forsikringsliste" description="Klikkbare rader med leverandør og pris.">{[{ title: 'Hus og innbo', icon: <House />, provider: 'Gjensidige', price: 'kr 410' }, { title: 'Bil', icon: <CarFront />, provider: 'If', price: 'kr 290' }, { title: 'Barneforsikring', icon: <Users />, provider: 'Gjensidige', price: 'kr 120' }, { title: 'Reise', icon: <Plane />, provider: 'Gjensidige', price: 'kr 100' }, { title: 'Livsforsikring', icon: <Heart />, provider: 'Storebrand' }, { title: 'Uføreforsikring', icon: <ShieldCheck />, provider: 'Storebrand' }].map((item) => <InsuranceRow key={item.title} {...item} onClick={() => setSelected(item.title)} />)}<p role="status" className="text-sm text-muted-foreground">{selected ? `${selected} valgt i eksempelet.` : 'Velg en forsikring.'}</p></Specimen>
           <Specimen title="Dekningsring" description="Tilgjengelig prosentvis status, som én bue eller segmentert per forsikring."><CoverageRing value={100} className="mx-auto" /><CoverageRing value={60} segments={5} className="mx-auto" /><p className="text-center text-2xl font-bold">100 % dekket</p><p className="text-center text-sm text-muted-foreground">Eksempeldata · 5 forsikringer</p></Specimen>
           <Specimen title="Samtale" description="Meldinger og sendefelt med Enter / Shift+Enter."><ChatExample /></Specimen>
           <Specimen title="Skadeflyt i chat" description="Hurtigsvar, bildeboble og «Legg ved»-ark. Bildet nedskaleres og blir i nettleseren."><DamageFlowExample /></Specimen>

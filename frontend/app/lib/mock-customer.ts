@@ -1,9 +1,9 @@
 import { insuranceMonthlyPrice } from './mock-actions'
 import { insuranceOffers } from './travel-offer'
-export type InsuranceProvider = 'Gjensidige' | 'If' | 'Via jobb – Arnesen Bygg AS'
-export type InsuranceCategory = 'Hus og innbo' | 'Bil' | 'Reise' | 'Familie og barn' | 'Bedrift'
+export type InsuranceProvider = 'Gjensidige' | 'If' | 'Storebrand'
+export type InsuranceCategory = 'Hus og innbo' | 'Bil' | 'Reise' | 'Barneforsikring' | 'Livsforsikring' | 'Uføreforsikring'
 
-// Third-party and business policies have no catalogue entry; summaries describe the demo's initial choices.
+// Third-party policy summaries describe fictional demo agreements, not provider terms.
 export type CoverageSummary = { basis: string; includes: string[]; excludes: string[] }
 
 export type OptionalCoverageDetail = { description: string; annualPremiumNok: number; claimsMade: number; overlap: string }
@@ -131,15 +131,20 @@ export const mockCustomer: MockCustomer = {
     {
       type: 'Bilforsikring',
       category: 'Bil',
-      provider: 'Gjensidige',
+      provider: 'If',
       coverage: 'Kasko',
       registrationNumber: 'EL 48213',
-      coverageId: 'car-kasko',
+      coverageId: 'car-if-kasko',
       displayName: 'Bil',
       monthlyPriceNok: 290,
       vehicle: 'Volvo XC60',
       renewalDate: '1. mars',
       collisionDeductibleNok: 6000,
+      coverageSummary: {
+        basis: fictionalSummary,
+        includes: ['Ansvar', 'Brann, tyveri og glasskade', 'Kollisjon og utforkjøring', 'Veihjelp'],
+        excludes: ['Leiebil', 'Punkteringsdekning'],
+      },
       optionalCoverages: { liability: true, partial: true, collision: true, roadside: true, rentalCar: false, puncture: false },
       coverages: [
         { option: 'liability', title: 'Ansvar', monthlyPriceNok: 65, required: true },
@@ -153,27 +158,33 @@ export const mockCustomer: MockCustomer = {
     {
       type: 'Reiseforsikring',
       category: 'Reise',
-      coverageId: 'travel-work',
+      coverageId: 'travel-standard',
       displayName: 'Reise',
-      employer: 'Arnesen Bygg AS',
-      monthlyPriceNok: 0,
-      maxTripDays: 45,
-      provider: 'Via jobb – Arnesen Bygg AS',
-      coverage: 'Kollektiv reiseforsikring for ansatte',
+      monthlyPriceNok: 100,
+      maxTripDays: 70,
+      provider: 'Gjensidige',
+      coverage: 'Reise',
       insuredPeople: ['Kari Haugen'],
+      optionalCoverages: { travelMedical: true, baggageAndDelay: true, cancellation: true, familyTravel: false },
+      coverages: [
+        { option: 'travelMedical', title: 'Sykdom og akutt hjelp på reise', monthlyPriceNok: 50 },
+        { option: 'baggageAndDelay', title: 'Bagasje og forsinkelse', monthlyPriceNok: 30 },
+        { option: 'cancellation', title: 'Avbestilling', monthlyPriceNok: 20 },
+        { option: 'familyTravel', title: 'Familiedekning', monthlyPriceNok: 60, description: 'Utvider demoavtalen til Kari og de tre barna', tip: 'Reiseforsikringen gjelder bare deg. Vurder familiedekning før turen til Thailand.' },
+      ],
       coverageSummary: {
         basis: fictionalSummary,
-        includes: ['Sykdom og akutt hjelp, for deg', 'Bagasje og forsinkelse'],
-        excludes: ['Barna er ikke med', 'Aktiviteter som dykking og scooter', 'Avbestilling av fritidsreiser'],
+        includes: ['Sykdom og akutt hjelp, for deg', 'Bagasje og forsinkelse', 'Avbestilling'],
+        excludes: ['Barna er ikke med'],
       },
     },
     {
       type: 'Barneforsikring',
-      category: 'Familie og barn',
+      category: 'Barneforsikring',
       provider: 'Gjensidige',
       coverage: 'Barneforsikring – Medium',
       coverageId: 'child-medium',
-      displayName: 'Familie og barn',
+      displayName: 'Barneforsikring',
       monthlyPriceNok: 120,
       includes: ['Økonomisk støtte ved alvorlig sykdom og ulykke', 'Uførepensjon etter avtalens vilkår', 'Helsehjelp for barna'],
       insuredPeople: ['Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
@@ -185,25 +196,35 @@ export const mockCustomer: MockCustomer = {
       ],
     },
     {
-      type: 'Bedriftsforsikring',
-      category: 'Bedrift',
-      provider: 'Gjensidige',
-      coverage: 'Småbedrift',
-      company: 'Haugen Interiør AS',
-      coverageId: 'business',
-      displayName: 'Bedrift',
-      monthlyPriceNok: 80,
-      optionalCoverages: { customerLiability: true, equipment: true, legalAid: true, businessInterruption: false },
-      coverages: [
-        { option: 'customerLiability', title: 'Ansvar overfor kunder', monthlyPriceNok: 35 },
-        { option: 'equipment', title: 'Utstyr og varer', monthlyPriceNok: 30, description: 'På eget lager' },
-        { option: 'legalAid', title: 'Rettshjelp', monthlyPriceNok: 15, description: 'Ved tvist med kunder' },
-        { option: 'businessInterruption', title: 'Avbruddstap', monthlyPriceNok: 30 },
-      ],
+      type: 'Livsforsikring',
+      category: 'Livsforsikring',
+      provider: 'Storebrand',
+      coverage: 'Livsforsikring via jobb',
+      coverageId: 'life-work-storebrand',
+      displayName: 'Livsforsikring',
+      employer: 'Arnesen Bygg AS',
+      monthlyPriceNok: 0,
+      insuredPeople: ['Kari Haugen'],
       coverageSummary: {
         basis: fictionalSummary,
-        includes: ['Ansvar overfor kunder', 'Utstyr og varer på eget lager', 'Rettshjelp ved tvist med kunder'],
-        excludes: ['Avbruddstap', 'Ansatte (firmaet har ingen ansatte)', 'Yrkesskade'],
+        includes: ['Engangsutbetaling til etterlatte ved dødsfall etter avtalens vilkår'],
+        excludes: ['Uførhet', 'Barna har ikke egen livsforsikring i denne avtalen'],
+      },
+    },
+    {
+      type: 'Uføreforsikring',
+      category: 'Uføreforsikring',
+      provider: 'Storebrand',
+      coverage: 'Uføreforsikring via jobb',
+      coverageId: 'disability-work-storebrand',
+      displayName: 'Uføreforsikring',
+      employer: 'Arnesen Bygg AS',
+      monthlyPriceNok: 0,
+      insuredPeople: ['Kari Haugen'],
+      coverageSummary: {
+        basis: fictionalSummary,
+        includes: ['Økonomisk støtte ved arbeidsuførhet etter avtalens vilkår'],
+        excludes: ['Engangsutbetaling til etterlatte ved dødsfall', 'Barna er ikke med i denne avtalen'],
       },
     },
   ],
@@ -215,7 +236,7 @@ export const mockCustomer: MockCustomer = {
     },
     {
       title: 'Barna mangler på reise',
-      reason: 'Jobbens reiseforsikring dekker bare deg. Familien er ikke med til Thailand i juli.',
+      reason: 'Reiseforsikringen hos Gjensidige dekker bare deg. Barna er ikke med til Thailand i juli.',
       actionLabel: 'Se hva det koster',
     },
     {
@@ -243,7 +264,7 @@ export const optionLabels: Record<string, string> = {
   buildingDamage: 'Brann, vann og naturskader', rodents: 'Bekjempelse av mus og rotter', liability: 'Ansvar og rettshjelp',
   contentsDamage: 'Brann og vannskader på innbo', theftAndAccidents: 'Tyveri og uhell',
   illnessAndAccidents: 'Alvorlig sykdom og ulykke', disabilityPension: 'Uførepensjon', healthCare: 'Helsehjelp',
-  customerLiability: 'Ansvar overfor kunder', equipment: 'Utstyr og varer', legalAid: 'Rettshjelp', businessInterruption: 'Avbruddstap',
+  travelMedical: 'Sykdom og akutt hjelp på reise', baggageAndDelay: 'Bagasje og forsinkelse', cancellation: 'Avbestilling', familyTravel: 'Familiedekning',
 }
 
 export const levelsFor = (coverageId: string | undefined) =>

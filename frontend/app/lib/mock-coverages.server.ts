@@ -109,17 +109,11 @@ const buildingCommon = {
 }
 
 export const mockInsuranceCatalogue = {
-  'travel-work': {
-    name: 'Reise via Arnesen Bygg AS',
-    basis: 'Fiktivt prototypescenario fra Figma, ikke faktiske Gjensidige-produktvilkår',
-    includes: ['Sykdom og akutt hjelp', 'Bagasje og forsinkelse', 'Avbestilling'],
-    exclusionsAndConditions: ['Bare den ansatte er dekket, ikke ektefelle eller barn', 'Opptil 45 dager per reise', 'Dykking og andre risikoaktiviteter er unntatt i dette fiktive scenarioet', 'Avtalen styres av arbeidsgiveren og kan ikke endres i prototypen'],
-  },
-  'business-if': {
-    name: 'Bedrift – If',
-    basis: 'Fiktivt prototypescenario fra Figma, ikke faktiske produktvilkår fra If',
-    includes: ['Bedriftens utstyr', 'Ansvar i virksomheten'],
-    exclusionsAndConditions: ['Detaljerte vilkår og summer er ikke oppgitt. Henvis til forsikringsbeviset og If for avklaring.'],
+  'car-if-kasko': {
+    name: 'Bilforsikring – If Kasko',
+    basis: 'Fiktivt, forenklet demosammendrag, ikke faktiske produktvilkår fra If',
+    includes: ['Ansvar', 'Brann, tyveri og glasskade', 'Kollisjon og utforkjøring', 'Veihjelp'],
+    exclusionsAndConditions: ['Leiebil og punkteringsdekning er ikke valgt i demoavtalen', 'Gjensidiges bilvilkår gjelder ikke denne avtalen. Henvis til forsikringsbeviset og If for detaljer.'],
   },
   'car-kasko': {
     name: 'Bilforsikring – Kasko',

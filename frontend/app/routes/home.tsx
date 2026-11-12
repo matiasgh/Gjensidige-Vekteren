@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { ArrowRight, BriefcaseBusiness, CarFront, Check, ChevronLeft, House, LockKeyhole, Plane, Users, X } from 'lucide-react'
+import { ArrowRight, CarFront, Check, ChevronLeft, Heart, House, LockKeyhole, Plane, ShieldCheck, Users, X } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
@@ -15,8 +15,8 @@ import CarDamageScreen, { type CarDamageFlow } from '~/components/vekter/car-dam
 const damageFlows: Record<string, CarDamageFlow> = { '/skade/meld': 'meld', '/skade/verksted': 'verksted', '/skade/berging': 'berging' }
 
 const money = (value: number) => value.toLocaleString('nb-NO')
-const icons = { 'Hus og innbo': House, Bil: CarFront, 'Familie og barn': Users, Reise: Plane, Bedrift: BriefcaseBusiness }
-const policyOrder: InsuranceCategory[] = ['Hus og innbo', 'Bil', 'Familie og barn', 'Reise', 'Bedrift']
+const icons = { 'Hus og innbo': House, Bil: CarFront, Barneforsikring: Users, Reise: Plane, Livsforsikring: Heart, Uføreforsikring: ShieldCheck }
+const policyOrder: InsuranceCategory[] = ['Hus og innbo', 'Bil', 'Barneforsikring', 'Reise', 'Livsforsikring', 'Uføreforsikring']
 const actionClass = 'w-full rounded-sm text-base font-bold whitespace-normal lg:w-auto lg:self-center lg:px-6'
 
 function CoverageList({ title, items, excluded = false }: { title: string; items: string[]; excluded?: boolean }) {
@@ -37,14 +37,14 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
   const [options, setOptions] = useState({ ...insurance.optionalCoverages })
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
-  const isCar = insurance.coverageId === 'car-kasko'
+  const isCar = insurance.category === 'Bil'
   const canEdit = insurance.provider === 'Gjensidige' && !insurance.employer && !!insurance.coverages
   const isWork = !!insurance.employer
   const price = canEdit ? insuranceMonthlyPrice(insurance, options) : insurance.monthlyPriceNok
   const changes = insurance.coverages?.filter(({ option }) => options[option] !== insurance.optionalCoverages?.[option]) ?? []
   const dirty = canEdit && changes.length > 0
   const tippedOptions = new Set(insurance.coverages?.filter(({ tip }) => tip?.trim()).slice(0, 2).map(({ option }) => option))
-  const question = isCar ? 'Hva bør jeg vite om bilforsikringen min og tilvalgene mine?' : isWork ? 'Hva dekker reiseforsikringen min via jobb?' : `Hva dekker ${insurance.displayName.toLowerCase()}?`
+  const question = isCar ? 'Hva bør jeg vite om bilforsikringen min hos If og tilvalgene mine?' : `Hva dekker ${insurance.displayName.toLowerCase()} hos ${insurance.provider}${isWork ? ' via jobb' : ''}?`
 
   useEffect(() => {
     if (!notice) return
@@ -69,10 +69,11 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
   return <main className="policy-screen flex flex-col gap-3.5 px-6 pb-[max(30px,env(safe-area-inset-bottom))]">
     <div className="flex min-h-6 items-center justify-between">
       <Button asChild size="icon-sm" variant="ghost" className="-ml-2"><Link to="/" aria-label="Tilbake til hjem"><ChevronLeft className="size-6" /></Link></Button>
-      <Badge className={`rounded-full border-0 px-3 py-1 text-xs font-medium ${isWork ? 'bg-[var(--employer)] text-background' : insurance.provider === 'If' ? 'bg-white text-background' : ''}`}>{isWork ? `Via ${insurance.employer}` : insurance.provider}</Badge>
+      <Badge className={`rounded-full border-0 px-3 py-1 text-xs font-medium ${isWork ? 'bg-[var(--employer)] text-background' : insurance.provider === 'If' ? 'bg-white text-background' : ''}`}>{insurance.provider}</Badge>
     </div>
     <h1 className={`font-display ${isCar ? 'text-[32px] leading-9' : 'text-4xl leading-10'}`}>{insurance.displayName}{isCar && ` · ${insurance.vehicle}`}</h1>
-    {isWork ? <p className="leading-6 text-muted-foreground">Betalt av arbeidsgiver · gjelder deg, opptil {insurance.maxTripDays} dager per reise</p> : insurance.oneTimePriceNok !== undefined ? <div className="flex flex-col gap-1"><div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(insurance.oneTimePriceNok)}</p><span className="text-muted-foreground">engangs</span></div><p className="leading-6 text-muted-foreground">{insurance.coverage}{insurance.insuredPeople && ` · ${insurance.insuredPeople.length} personer`}</p></div> : <div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(price)}</p><span className="text-muted-foreground">/ mnd</span></div>}
+    {isWork ? <p className="leading-6 text-muted-foreground">Via jobb · betalt av arbeidsgiver · gjelder {insurance.insuredPeople?.join(', ') ?? 'deg'}</p> : insurance.oneTimePriceNok !== undefined ? <div className="flex flex-col gap-1"><div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(insurance.oneTimePriceNok)}</p><span className="text-muted-foreground">engangs</span></div><p className="leading-6 text-muted-foreground">{insurance.coverage}{insurance.insuredPeople && ` · ${insurance.insuredPeople.length} personer`}</p></div> : <div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(price)}</p><span className="text-muted-foreground">/ mnd</span></div>}
+    {insurance.category === 'Reise' && insurance.maxTripDays && <p className="text-sm text-muted-foreground">Opptil {insurance.maxTripDays} dager per reise · {insurance.insuredPeople?.join(', ')}</p>}
     {isCar && <p className="text-sm text-muted-foreground">Egenandel kr {money(insurance.collisionDeductibleNok ?? 0)} · Fornyes {insurance.renewalDate}</p>}
     {canEdit ? <>
       <section aria-labelledby="policy-coverages" className="w-full">
@@ -101,8 +102,7 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
     {chatError && <p role="alert" className="text-sm text-destructive">{chatError}</p>}
     {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede demoprofilen.</p>}
     {canEdit && <Button onClick={save} disabled={!dirty} className={actionClass}>Lagre endringer</Button>}
-    <Button type="button" onClick={() => onAsk(question)} variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}>Spør Vekter’n om {isCar ? 'bilforsikringen' : isWork ? 'reisen' : 'forsikringen'}</Button>
-    {isWork && <Button asChild variant="outline" className={`${actionClass} border-[#7f8bc0] bg-transparent`}><Link to={`/chat?question=${encodeURIComponent('Hvilken ekstra reiseforsikring kan jeg vurdere for familien, siden jobbens avtale bare dekker meg?')}`}>Se ekstra dekning for familien</Link></Button>}
+    <Button type="button" onClick={() => onAsk(question)} variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}>Spør Vekter’n om {isCar ? 'bilforsikringen' : 'forsikringen'}</Button>
   </main>
 }
 
@@ -189,7 +189,7 @@ export default function Home() {
               if (!policies.length) return null
               const item = policies[0]
               const Icon = icons[category]
-              return <div key={category}><InsuranceRow icon={<Icon strokeWidth={1.5} />} title={category} provider={item.employer ? 'Via jobb' : item.provider} price={item.employer ? undefined : `kr ${money(policies.reduce((sum, policy) => sum + policy.monthlyPriceNok, 0))}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />{policies.length > 1 && <div className="flex flex-wrap gap-4 py-2 pl-9">{policies.map((policy) => <Link key={policy.coverageId} id={`policy-${policy.coverageId}`} to={`/?insurance=${encodeURIComponent(policy.coverageId)}`} className={`text-sm underline underline-offset-4 ${policy.coverageId === highlighted ? 'rounded-sm font-bold text-primary ring-2 ring-primary ring-offset-4 ring-offset-background' : 'text-muted-foreground'}`}>{policy.displayName}{policy.coverageId === highlighted && <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground no-underline">Ny</span>}</Link>)}</div>}</div>
+              return <div key={category}><InsuranceRow icon={<Icon strokeWidth={1.5} />} title={category} provider={item.provider} price={item.employer ? undefined : `kr ${money(policies.reduce((sum, policy) => sum + policy.monthlyPriceNok, 0))}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />{policies.length > 1 && <div className="flex flex-wrap gap-4 py-2 pl-9">{policies.map((policy) => <Link key={policy.coverageId} id={`policy-${policy.coverageId}`} to={`/?insurance=${encodeURIComponent(policy.coverageId)}`} className={`text-sm underline underline-offset-4 ${policy.coverageId === highlighted ? 'rounded-sm font-bold text-primary ring-2 ring-primary ring-offset-4 ring-offset-background' : 'text-muted-foreground'}`}>{policy.displayName}{policy.coverageId === highlighted && <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground no-underline">Ny</span>}</Link>)}</div>}</div>
             })}
           </nav>
         </div>
