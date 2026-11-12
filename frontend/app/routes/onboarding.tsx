@@ -339,11 +339,14 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
 
 // Step 6 follows a full coverage ring, so it gives advice instead of gaps:
 // tips for what the customer chose in step 3, topped up with general ones.
+// While a Hus Pluss upgrade is proposed, the heading says the customer is almost fully covered.
 function Tips({ state, setState }: { state: MockState; setState: ReturnType<typeof useMockState>['setState'] }) {
   const tips = tipsFor(state.onboarding.priorities)
   const [accepted, setAccepted] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const building = state.customer.insurances.find(({ coverageId }) => coverageId === 'building' || coverageId === 'building-plus')
-  const showUpgrade = building && (building.coverageId === 'building' || accepted)
+  const showUpgrade = building && (accepted || (building.coverageId === 'building' && !dismissed))
+  const proposing = showUpgrade && !accepted
   const newPrice = building && (accepted ? building.monthlyPriceNok : applyMockAction(state.customer, { type: 'set-coverage-level', coverageId: 'building', targetCoverageId: 'building-plus' }).insurances.find(({ displayName }) => displayName === building.displayName)!.monthlyPriceNok)
   function accept() {
     const next: MockState = { ...state, customer: applyMockAction(state.customer, { type: 'set-coverage-level', coverageId: 'building', targetCoverageId: 'building-plus' }) }
@@ -354,11 +357,11 @@ function Tips({ state, setState }: { state: MockState; setState: ReturnType<type
   return (
     <Screen className="gap-2.5 px-6 pt-5 pb-4">
       <Progress step={6} />
-      <h1 className="font-display text-[30px] leading-8">Du er godt dekket.</h1>
-      <p className="text-sm font-medium text-muted-foreground">Tre ting som er lurt å huske.</p>
+      <h1 className="font-display text-[30px] leading-8">{proposing ? 'Du er nesten helt dekket.' : 'Du er godt dekket.'}</h1>
+      <p className="text-sm font-medium text-muted-foreground">{proposing ? 'Én ting kan forbedres, og tre ting er lurt å huske.' : 'Tre ting som er lurt å huske.'}</p>
       {showUpgrade && newPrice !== undefined && (
         <UpgradeProposal
-          from="Hus" to="Hus Pluss" upgraded={accepted} onAccept={accept}
+          from="Hus" to="Hus Pluss" upgraded={accepted} onAccept={accept} onDismiss={() => setDismissed(true)}
           currentPriceNok={accepted ? newPrice - coverageLevelSurchargeNok['building-plus'] : building.monthlyPriceNok} newPriceNok={newPrice}
           reason={`Huset ditt er fra ${state.customer.home.builtYear}. Hus Pluss dekker også råtesopp, skadeinsekter, våtrom og følgeskader etter lekkasje – skader som er vanligere og dyrere i eldre hus.`}
         />
