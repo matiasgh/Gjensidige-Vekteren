@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { optionLabels, type MockCustomer } from './mock-customer'
 import { applyMockAction, isCoverageAction } from './mock-actions'
-import { isAiBlockList, MAX_BLOCKS, MAX_QUICK_REPLIES } from './chat-blocks'
+import { sanitizeAiBlocks, MAX_BLOCKS, MAX_QUICK_REPLIES, type AiBlock } from './chat-blocks'
 import { insuranceOffers, isOfferPurchased } from './travel-offer'
 import type { ApiChatMessage } from './mock-state'
 import { CAR_DAMAGE_FLOW, carDamageTexts } from './car-damage'
@@ -94,7 +94,7 @@ const blocksTool = {
   type: 'function',
   function: {
     name: 'reply_with_blocks',
-    description: 'Svar med kort tekst og kort i chatten (dekningssjekk, tips, forslag fra tilbudslisten, svarknapper). Kjøper eller endrer ingenting.',
+    description: 'Svar med kort tekst og kort i chatten. Det finnes bare fire korttyper: coverage-check, tip, offer og quick-replies. Ikke finn på andre typer; vanlig tekst skal i text. Kjøper eller endrer ingenting.',
     parameters: {
       type: 'object',
       properties: {
@@ -105,10 +105,10 @@ const blocksTool = {
           maxItems: MAX_BLOCKS,
           items: {
             anyOf: [
-              { type: 'object', properties: { type: { const: 'coverage-check' }, coverageId: { type: 'string', description: 'coverageId for en avtale i kundens forsikringsliste' } }, required: ['type', 'coverageId'], additionalProperties: false },
-              { type: 'object', properties: { type: { const: 'quick-replies' }, options: { type: 'array', minItems: 1, maxItems: MAX_QUICK_REPLIES, items: { type: 'object', properties: { label: { type: 'string', maxLength: 40 }, action: { enum: ['open-overview'] } }, required: ['label'], additionalProperties: false } } }, required: ['type', 'options'], additionalProperties: false },
-              { type: 'object', properties: { type: { const: 'tip' }, title: { type: 'string', maxLength: 80 }, body: { type: 'string', maxLength: 400 }, remindInDays: { type: 'integer', minimum: 1, maximum: 60 } }, required: ['type', 'title', 'body'], additionalProperties: false },
-              { type: 'object', properties: { type: { const: 'offer' }, offerId: { enum: Object.keys(insuranceOffers) } }, required: ['type', 'offerId'], additionalProperties: false },
+              { type: 'object', properties: { type: { type: 'string', enum: ['coverage-check'] }, coverageId: { type: 'string', description: 'coverageId for en avtale i kundens forsikringsliste' } }, required: ['type', 'coverageId'], additionalProperties: false },
+              { type: 'object', properties: { type: { type: 'string', enum: ['quick-replies'] }, options: { type: 'array', minItems: 1, maxItems: MAX_QUICK_REPLIES, items: { type: 'object', properties: { label: { type: 'string', maxLength: 40 }, action: { enum: ['open-overview'] } }, required: ['label'], additionalProperties: false } } }, required: ['type', 'options'], additionalProperties: false },
+              { type: 'object', properties: { type: { type: 'string', enum: ['tip'] }, title: { type: 'string', maxLength: 80 }, body: { type: 'string', maxLength: 400 }, remindInDays: { type: 'integer', minimum: 1, maximum: 60 } }, required: ['type', 'title', 'body'], additionalProperties: false },
+              { type: 'object', properties: { type: { type: 'string', enum: ['offer'] }, offerId: { enum: Object.keys(insuranceOffers) } }, required: ['type', 'offerId'], additionalProperties: false },
             ],
           },
         },
@@ -122,11 +122,21 @@ const blocksTool = {
 const DISCLAIMER_PATTERN = /\n*\s*Merk: Kundeprofilen og avtalevalgene er fiktive demodata\.[^\n]*\s*$/
 
 // Validates a reply_with_blocks call against the current profile. Throws on any invalid block.
-export function parseBlocksReply(rawArguments: string, customer: MockCustomer) {
+export function fallbackText(blocks: AiBlock[]) {
+  if (!blocks.length) return ''
+  return blocks.every((block) => block.type === 'quick-replies') ? 'Er det noe mer jeg kan hjelpe deg med?' : 'Her er det jeg fant:'
+}
+
+function parseBlocksReply(rawArguments: string, customer: MockCustomer) {
   const { text, blocks } = JSON.parse(rawArguments) as { text?: unknown; blocks?: unknown }
-  if (typeof text !== 'string' || !text.trim() || text.length > 1500) throw new Error('Ugyldig tekst.')
-  if (!isAiBlockList(blocks, { customer, fresh: true })) throw new Error('Ugyldige kort.')
-  return { reply: text.replace(DISCLAIMER_PATTERN, '').trim(), blocks }
+  if (text !== undefined && (typeof text !== 'string' || text.length > 1500)) throw new Error('Ugyldig tekst.')
+  const sanitized = sanitizeAiBlocks(blocks, { customer, fresh: true })
+  const message = (text ?? '').replace(DISCLAIMER_PATTERN, '').trim()
+  // Some models leave out text when they send cards; the chat bubble still needs one.
+  const reply = [message || fallbackText(sanitized.blocks), ...sanitized.extraText].filter(Boolean).join('\n\n')
+  if (!reply) throw new Error('Tomt svar.')
+  // Nothing usable left: fall back to a plain text reply rather than an error.
+  return sanitized.blocks.length ? { reply, blocks: sanitized.blocks } : { reply }
 }
 
 const coverageTool = {
@@ -150,6 +160,18 @@ const coverageTool = {
   },
 }
 
+// Earlier card replies are replayed as real tool calls. Plain-text notes made
+// the model imitate them in text instead of calling reply_with_blocks.
+type ProviderMessage = { role: string; content: string; tool_calls?: unknown[]; tool_call_id?: string }
+function toProviderMessages({ role, content, blocks }: ApiChatMessage, index: number): ProviderMessage[] {
+  if (role !== 'assistant' || !blocks) return [{ role, content }]
+  const id = `blocks_${index}`
+  return [
+    { role, content: '', tool_calls: [{ id, type: 'function', function: { name: 'reply_with_blocks', arguments: JSON.stringify({ text: content, blocks }) } }] },
+    { role: 'tool', tool_call_id: id, content: 'Vist for kunden.' },
+  ]
+}
+
 export async function chat(messages: ApiChatMessage[], customer: MockCustomer, priorities: string[] = []): Promise<Response> {
   const { AI_API_KEY, AI_MODEL, AI_BASE_URL = 'https://api.openai.com/v1' } = process.env
   if (!AI_API_KEY) return error('AI_API_KEY er ikke satt. Legg den inn i frontend/.env.')
@@ -162,7 +184,7 @@ export async function chat(messages: ApiChatMessage[], customer: MockCustomer, p
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_API_KEY}` },
     body: JSON.stringify({
       model: AI_MODEL,
-      messages: [{ role: 'system', content: VEKTEREN_SYSTEM_PROMPT.replace('__CUSTOMER_DATA__', () => JSON.stringify(customer, null, 2)).replace('__OFFERS__', () => JSON.stringify(offers, null, 2)).replace('__PRIORITIES__', () => JSON.stringify(priorities, null, 2)) }, ...messages.map(({ role, content }) => ({ role, content }))],
+      messages: [{ role: 'system', content: VEKTEREN_SYSTEM_PROMPT.replace('__CUSTOMER_DATA__', () => JSON.stringify(customer, null, 2)).replace('__OFFERS__', () => JSON.stringify(offers, null, 2)).replace('__PRIORITIES__', () => JSON.stringify(priorities, null, 2)) }, ...messages.flatMap(toProviderMessages)],
       tools: [coverageTool, carDamageTool, blocksTool],
       parallel_tool_calls: false,
     }),

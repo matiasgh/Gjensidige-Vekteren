@@ -86,3 +86,36 @@ export function blockNote(block: AiBlock) {
     case 'offer': return `[Viste forslag: ${block.offerId}]`
   }
 }
+
+// Models do not always honour the tool schema (Gemini invents block types such
+// as "text-card" and attaches open-overview to any button). Keep every block
+// that passes validation, fold free-text cards into the message text and drop
+// the rest, instead of rejecting the whole reply.
+export function sanitizeAiBlocks(value: unknown, context: BlockContext = {}): { blocks: AiBlock[]; extraText: string[] } {
+  const blocks: AiBlock[] = []
+  const extraText: string[] = []
+  for (const raw of Array.isArray(value) ? value : []) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
+    let block = raw as Record<string, unknown>
+    if (block.type === 'quick-replies' && Array.isArray(block.options)) {
+      const options = block.options
+        .filter((option): option is Record<string, unknown> => !!option && typeof option === 'object' && text((option as Record<string, unknown>).label, MAX_LABEL))
+        .map((option) => {
+          const label = (option.label as string).trim()
+          return option.action === 'open-overview' && /oversikt/i.test(label) ? { label, action: 'open-overview' as const } : { label }
+        })
+        .filter((option, index, all) => all.findIndex((other) => other.label === option.label) === index)
+        .slice(0, MAX_QUICK_REPLIES)
+      block = { type: 'quick-replies', options }
+    }
+    if (isAiBlock(block, context)) {
+      if (block.type !== 'quick-replies' || !blocks.some((item) => item.type === 'quick-replies')) blocks.push(block)
+      continue
+    }
+    const body = typeof block.body === 'string' ? block.body : typeof block.text === 'string' ? block.text : undefined
+    if (block.type !== 'tip' && block.type !== 'offer' && body?.trim()) extraText.push(body.trim())
+  }
+  // Quick replies always go last, as in the Figma flow.
+  blocks.sort((a, b) => Number(a.type === 'quick-replies') - Number(b.type === 'quick-replies'))
+  return { blocks: blocks.slice(-MAX_BLOCKS), extraText }
+}

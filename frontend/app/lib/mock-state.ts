@@ -1,5 +1,5 @@
 import { carDamageKinds, MAX_IMAGE_DATA_URL_LENGTH, type CarDamageKind } from './car-damage'
-import { blockNote, isAiBlockList, type AiBlock } from './chat-blocks'
+import { isAiBlockList, type AiBlock } from './chat-blocks'
 import { createDefaultCustomer, isMockCustomer, mockCustomer, type MockCustomer } from './mock-customer'
 import { getOffer } from './travel-offer'
 
@@ -15,7 +15,8 @@ export type OfferReceipt = { offerId: string; reminderSet: boolean }
 export type ChatMessage = { role: 'user' | 'assistant'; content: string; image?: string; kind?: ChatMessageKind; blocks?: AiBlock[]; receipt?: OfferReceipt }
 export type Reminder = { title: string; dueDate: string }
 /** The text-only shape accepted by /api/chat. */
-export type ApiChatMessage = { role: 'user' | 'assistant'; content: string }
+/** The text shape accepted by /api/chat; assistant messages may carry the cards they showed. */
+export type ApiChatMessage = { role: 'user' | 'assistant'; content: string; blocks?: AiBlock[] }
 export type MockConversation = { id: string; messages: ChatMessage[] }
 // Priorities are the step 3 chips plus anything the customer wrote there.
 export type OnboardingState = { completed: boolean; priorities: string[] }
@@ -69,19 +70,20 @@ export function isChatMessage(value: unknown): value is ChatMessage {
 }
 
 export function isApiChatMessage(value: unknown): value is ApiChatMessage {
-  return isChatMessage(value) && Object.keys(value).every((key) => key === 'role' || key === 'content')
+  return isChatMessage(value) && Object.keys(value).every((key) => key === 'role' || key === 'content' || key === 'blocks')
 }
 
 export const receiptLines = (receipt: OfferReceipt) => ['Kvittering sendt på e-post', 'Oversikten din er oppdatert', ...(receipt.reminderSet ? ['Påminnelse om vaksine er satt'] : [])]
 
 // Images never leave the browser: the AI only gets a short note that a photo was sent.
-// Cards are serialised as short notes, so /api/chat still receives plain text only.
+// Receipts become short notes; cards are sent along as structured blocks.
 export function toApiMessages(messages: ChatMessage[], firstName: string): ApiChatMessage[] {
   return messages.map(({ role, content, image, blocks, receipt }) => {
     if (image) return { role, content: `[${firstName} sendte et bilde av skaden]` }
     const offer = receipt && getOffer(receipt.offerId)
     if (receipt && offer) return { role, content: `[${firstName} godkjente ${offer.title}. Appen viste kvitteringen: ${offer.title} er lagt til i demoprofilen, ${receiptLines(receipt).join(', ').toLowerCase()}.]` }
-    return { role, content: blocks ? [content, ...blocks.map(blockNote)].join('\n\n') : content }
+    // The server replays cards as reply_with_blocks tool calls, so the model keeps using the tool.
+    return blocks ? { role, content, blocks } : { role, content }
   })
 }
 
