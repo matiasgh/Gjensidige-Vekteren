@@ -1,11 +1,12 @@
 import 'dotenv/config'
 import { optionLabels, type MockCustomer } from './mock-customer'
 import { applyMockAction, isCoverageAction } from './mock-actions'
-import { sanitizeAiBlocks, MAX_BLOCKS, MAX_QUICK_REPLIES, type AiBlock } from './chat-blocks'
+import { coverageCheckItems, isAiBlockList, MAX_BLOCKS, MAX_QUICK_REPLIES } from './chat-blocks'
 import { insuranceOffers, isOfferPurchased } from './travel-offer'
 import type { ApiChatMessage } from './mock-state'
 import { CAR_DAMAGE_FLOW, carDamageTexts } from './car-damage'
 import { catalogueMetadata, mockCoverageInteractions, mockInsuranceCatalogue } from './mock-coverages.server'
+import { TRAVEL_REVIEW_STAGE, SHOW_TRAVEL_PROPOSAL, DECLINE_TRAVEL_PROPOSAL, travelReviewReply, travelProposalReply } from './travel-flow'
 
 const VEKTEREN_SYSTEM_PROMPT = `Du er Vekter'n (Vekteren), Gjensidiges digitale forsikringsassistent som passer på alle kundens forsikringer, uansett hvem som leverer dem.
 Svar alltid på norsk, vennlig, kort og tydelig.
@@ -50,14 +51,14 @@ En endring gjelder bare kundeprofilen i appen. Bekreft kort hvilken dekning som 
 Når kunden forteller at bilen har fått en ny skade, for eksempel bulk, ripe, kollisjon, påkjørsel eller at noen har rygget inn i bilen, skal du bruke verktøyet start_car_damage_flow i stedet for å svare med tekst. Appen starter da en fast skadeflyt som spør om alle er uskadet og ber om et bilde. Ikke bruk verktøyet ved generelle spørsmål om bilforsikring eller skademelding uten en konkret skade.
 Meldinger i hakeparentes, for eksempel «[Lisbeth sendte et bilde av skaden]», «[Viste forslag: familyTravelThailand]» eller «[Lisbeth godkjente Familiereise Thailand. …]», er notater fra appen om bilder, kort og knappetrykk. Bildet er vurdert i en fast demoflyt; du ser det ikke selv. Ikke skriv slike hakeparentes-notater selv.
 
-Kort i chatten (verktøyet reply_with_blocks, valgfritt):
-Du kan svare med reply_with_blocks i stedet for vanlig tekst når kort gjør svaret tydeligere, særlig ved spørsmål om reise, reisedekning og om familien er dekket. text er en kort melding (1–3 setninger) som vises før kortene. Ikke gjenta innholdet i kortene i text.
+Svarformat og kort i chatten:
+Alle endelige svar skal følge svarskjemaet med text og blocks. text er kundens svartekst, og blocks er en liste med kort. Bruk blocks: [] når kort ikke passer. Ved kort er text en kort melding (1–3 setninger) som vises før kortene. Ikke gjenta innholdet i kortene i text. Kort passer særlig ved spørsmål om reise, reisedekning og om familien er dekket.
 - coverage-check { coverageId }: viser ✓/✗ fra gjeldende dekningsvalg eller coverageSummary/includes/excludes for en avtale kunden har. Bruk den når kunden spør om en avtale dekker noe, for eksempel travel-standard ved spørsmål om familiereisen. Du kan ikke velge linjene selv.
 - quick-replies { options }: 2–${MAX_QUICK_REPLIES} korte svarforslag (maks 40 tegn) som sendes som kundens egen melding når de trykkes. action «open-overview» åpner forsikringsoversikten og skal bare brukes på et valg som «Se oversikten». Ingen andre handlinger eller lenker finnes. Legg quick-replies sist.
 - tip { title, body, remindInDays? }: et praktisk råd som ikke er forsikring, for eksempel «Husk reisevaksine» før reise til Thailand. Sett remindInDays (for eksempel 14) når en påminnelse passer; knappen blir da «Minn meg på om N dager». Appen lagrer bare påminnelsen lokalt.
 - offer { offerId }: viser et forslag fra tilbudslisten nedenfor. Feltene og prisen hentes fra listen; nevn bare tall og dekning som står der. Kunden må selv trykke «Se og godkjenn» og deretter «Godkjenn og betal». Vis aldri et forslag som allerede er kjøpt (alreadyBought).
-Typisk reiseflyt: Når kunden spør om familien er dekket på en planlagt reise, svar kort (for eksempel «Delvis. …») med coverage-check for reiseavtalen, si at du ser to ting kunden bør ordne, og gi quick-replies «Ja, vis meg» og «Ikke nå». Svarer kunden «Ja, vis meg», svar med en tip om reisevaksine (remindInDays 14) og offer for det passende tilbudet. Etter et notat om at kunden har godkjent et tilbud, bekreft kort og gi quick-replies «Se oversikten» (action open-overview) og «Takk». Ved «Nei takk» eller «Ikke nå», respekter det og svar kort med tekst.
-Vanlige tekstsvar er alltid lov; bruk kort bare når det passer.
+Reiseflyten til Thailand styres av appen: Når kunden spør om familien eller barna er dekket, bruk review_family_travel. Appen viser først dagens dekning, deretter et spørsmål og «Ja, vis meg» / «Ikke nå». Appen viser vaksinetips og tilbud først etter «Ja, vis meg». Ikke presenter tilbud eller vaksinetips på forhånd. Etter et notat om at kunden har godkjent et tilbud, bekreft kort og gi quick-replies «Se oversikten» (action open-overview) og «Takk». Ved «Nei takk» eller «Ikke nå», respekter det og svar kort med tekst.
+Bruk kort bare når det passer. Skriv aldri kortdata, JSON eller verktøyargumenter i text eller kodeblokker. Endringer og start av skadeflyt må fortsatt bruke sine egne verktøy, ikke svarskjemaet.
 
 Svar direkte. Ikke legg til merknader om demo, prototype eller fiktive data, og ikke gjenta slike merknader fra samtalehistorikken eller datagrunnlaget. Dette er intern kontekst, ikke tekst som skal vises til kunden. Behold relevant usikkerhet om dekning og vilkår.
 
@@ -88,25 +89,34 @@ const carDamageTool = {
   },
 }
 
-const blocksTool = {
+const travelReviewTool = {
   type: 'function',
   function: {
-    name: 'reply_with_blocks',
-    description: 'Svar med kort tekst og kort i chatten. Det finnes bare fire korttyper: coverage-check, tip, offer og quick-replies. Ikke finn på andre typer; vanlig tekst skal i text. Kjøper eller endrer ingenting.',
-    parameters: {
+    name: 'review_family_travel',
+    description: 'Vis gjeldende reiseforsikring først og spør om kunden vil se forslag. Bruk når kunden spør om familien/barna er dekket på reisen til Thailand. Viser ikke tilbud og endrer ingenting.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+}
+
+const replyFormat = (coverageIds: string[], offerIds: string[]) => ({
+  type: 'json_schema',
+  json_schema: {
+    name: 'chat_reply',
+    strict: true,
+    schema: {
       type: 'object',
       properties: {
-        text: { type: 'string', description: 'Kort melding som vises før kortene. Uten «Merk:»-merknaden.' },
+        text: { type: 'string', minLength: 1, maxLength: 1500, description: 'Svartekst til kunden. Bare vanlig tekst, aldri kortdata eller JSON.' },
         blocks: {
           type: 'array',
-          minItems: 1,
+          minItems: 0,
           maxItems: MAX_BLOCKS,
           items: {
             anyOf: [
-              { type: 'object', properties: { type: { type: 'string', enum: ['coverage-check'] }, coverageId: { type: 'string', description: 'coverageId for en avtale i kundens forsikringsliste' } }, required: ['type', 'coverageId'], additionalProperties: false },
-              { type: 'object', properties: { type: { type: 'string', enum: ['quick-replies'] }, options: { type: 'array', minItems: 1, maxItems: MAX_QUICK_REPLIES, items: { type: 'object', properties: { label: { type: 'string', maxLength: 40 }, action: { enum: ['open-overview'] } }, required: ['label'], additionalProperties: false } } }, required: ['type', 'options'], additionalProperties: false },
+              ...(coverageIds.length ? [{ type: 'object', properties: { type: { type: 'string', enum: ['coverage-check'] }, coverageId: { type: 'string', enum: coverageIds } }, required: ['type', 'coverageId'], additionalProperties: false }] : []),
+               { type: 'object', properties: { type: { type: 'string', enum: ['quick-replies'] }, options: { type: 'array', minItems: 1, maxItems: MAX_QUICK_REPLIES, items: { type: 'object', properties: { label: { type: 'string', maxLength: 40 }, action: { type: 'string', enum: ['open-overview'] } }, required: ['label'], additionalProperties: false } } }, required: ['type', 'options'], additionalProperties: false },
               { type: 'object', properties: { type: { type: 'string', enum: ['tip'] }, title: { type: 'string', maxLength: 80 }, body: { type: 'string', maxLength: 400 }, remindInDays: { type: 'integer', minimum: 1, maximum: 60 } }, required: ['type', 'title', 'body'], additionalProperties: false },
-              { type: 'object', properties: { type: { type: 'string', enum: ['offer'] }, offerId: { enum: Object.keys(insuranceOffers) } }, required: ['type', 'offerId'], additionalProperties: false },
+               ...(offerIds.length ? [{ type: 'object', properties: { type: { type: 'string', enum: ['offer'] }, offerId: { type: 'string', enum: offerIds } }, required: ['type', 'offerId'], additionalProperties: false }] : []),
             ],
           },
         },
@@ -115,26 +125,21 @@ const blocksTool = {
       additionalProperties: false,
     },
   },
-}
+})
 
 const DISCLAIMER_PATTERN = /\n*\s*Merk: Kundeprofilen og avtalevalgene er fiktive demodata\.[^\n]*\s*$/
 
-// Validates a reply_with_blocks call against the current profile. Throws on any invalid block.
-export function fallbackText(blocks: AiBlock[]) {
-  if (!blocks.length) return ''
-  return blocks.every((block) => block.type === 'quick-replies') ? 'Er det noe mer jeg kan hjelpe deg med?' : 'Her er det jeg fant:'
-}
-
-function parseBlocksReply(rawArguments: string, customer: MockCustomer) {
-  const { text, blocks } = JSON.parse(rawArguments) as { text?: unknown; blocks?: unknown }
-  if (text !== undefined && (typeof text !== 'string' || text.length > 1500)) throw new Error('Ugyldig tekst.')
-  const sanitized = sanitizeAiBlocks(blocks, { customer, fresh: true })
-  const message = (text ?? '').replace(DISCLAIMER_PATTERN, '').trim()
-  // Some models leave out text when they send cards; the chat bubble still needs one.
-  const reply = [message || fallbackText(sanitized.blocks), ...sanitized.extraText].filter(Boolean).join('\n\n')
+function parseReply(content: string, customer: MockCustomer) {
+  const value: unknown = JSON.parse(content)
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Ugyldig svar.')
+  const { text, blocks } = value as Record<string, unknown>
+  if (Object.keys(value).some((key) => key !== 'text' && key !== 'blocks')
+    || typeof text !== 'string' || !text.trim() || text.length > 1500
+    || !Array.isArray(blocks) || (blocks.length > 0 && !isAiBlockList(blocks, { customer, fresh: true }))) throw new Error('Ugyldig svar.')
+  if (blocks.some((block) => block.type === 'offer')) throw new Error('Tilbud krever eget samtalesteg.')
+  const reply = text.replace(DISCLAIMER_PATTERN, '').trim()
   if (!reply) throw new Error('Tomt svar.')
-  // Nothing usable left: fall back to a plain text reply rather than an error.
-  return sanitized.blocks.length ? { reply, blocks: sanitized.blocks } : { reply }
+  return blocks.length ? { reply, blocks } : { reply }
 }
 
 const coverageTool = {
@@ -147,8 +152,8 @@ const coverageTool = {
       properties: {
         action: {
           anyOf: [
-            { type: 'object', properties: { type: { const: 'set-coverage-level' }, coverageId: { type: 'string' }, targetCoverageId: { enum: ['building', 'building-plus', 'travel-standard', 'travel-plus'] } }, required: ['type', 'coverageId', 'targetCoverageId'], additionalProperties: false },
-            { type: 'object', properties: { type: { const: 'set-coverage-option' }, coverageId: { type: 'string' }, option: { enum: Object.keys(optionLabels) }, enabled: { type: 'boolean' } }, required: ['type', 'coverageId', 'option', 'enabled'], additionalProperties: false },
+            { type: 'object', properties: { type: { type: 'string', enum: ['set-coverage-level'] }, coverageId: { type: 'string' }, targetCoverageId: { type: 'string', enum: ['building', 'building-plus', 'travel-standard', 'travel-plus'] } }, required: ['type', 'coverageId', 'targetCoverageId'], additionalProperties: false },
+            { type: 'object', properties: { type: { type: 'string', enum: ['set-coverage-option'] }, coverageId: { type: 'string' }, option: { type: 'string', enum: Object.keys(optionLabels) }, enabled: { type: 'boolean' } }, required: ['type', 'coverageId', 'option', 'enabled'], additionalProperties: false },
           ],
         },
       },
@@ -158,53 +163,61 @@ const coverageTool = {
   },
 }
 
-// Earlier card replies are replayed as real tool calls. Plain-text notes made
-// the model imitate them in text instead of calling reply_with_blocks.
-type ProviderMessage = { role: string; content: string; tool_calls?: unknown[]; tool_call_id?: string }
-function toProviderMessages({ role, content, blocks }: ApiChatMessage, index: number): ProviderMessage[] {
-  if (role !== 'assistant' || !blocks) return [{ role, content }]
-  const id = `blocks_${index}`
-  return [
-    { role, content: '', tool_calls: [{ id, type: 'function', function: { name: 'reply_with_blocks', arguments: JSON.stringify({ text: content, blocks }) } }] },
-    { role: 'tool', tool_call_id: id, content: 'Vist for kunden.' },
-  ]
+// Replay every assistant answer in the same contract, including older plain replies.
+function toProviderMessage({ role, content, blocks, followUp }: ApiChatMessage) {
+  return { role, content: role === 'assistant' ? JSON.stringify({ text: [content, followUp].filter(Boolean).join('\n\n'), blocks: blocks ?? [] }) : content }
 }
 
 export async function chat(messages: ApiChatMessage[], customer: MockCustomer, priorities: string[] = []): Promise<Response> {
+  const previous = messages.at(-2)
+  const latest = messages.at(-1)
+  if (previous?.role === 'assistant' && previous.travelStage === TRAVEL_REVIEW_STAGE && latest?.role === 'user') {
+    if (latest.content.trim() === SHOW_TRAVEL_PROPOSAL) return Response.json(travelProposalReply(customer))
+    if (latest.content.trim() === DECLINE_TRAVEL_PROPOSAL) return Response.json({ reply: 'Helt i orden. Si fra hvis du vil se forslagene senere.', actions: [] })
+  }
   const { AI_API_KEY, AI_MODEL, AI_BASE_URL = 'https://api.openai.com/v1' } = process.env
   if (!AI_API_KEY) return error('AI_API_KEY er ikke satt. Legg den inn i frontend/.env.')
   if (!AI_MODEL) return error('AI_MODEL er ikke satt. Legg den inn i frontend/.env.')
 
   const offers = Object.values(insuranceOffers).map(({ policy, ...offer }) => ({ ...offer, coverageDetails: policy.includes, insuredPeople: policy.insuredPeople, alreadyBought: isOfferPurchased(customer.insurances, offer.id) }))
-
-  const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
+  // Constrain identifiers to this customer's current state, not just their shape.
+  const coverageIds = customer.insurances.filter((item) => coverageCheckItems(customer, item.coverageId)).map((item) => item.coverageId)
+  // The travel offer is only emitted by the explicit, customer-approved stage.
+  const offerIds: string[] = []
+  const format = replyFormat(coverageIds, offerIds)
+  const providerMessages = [{ role: 'system', content: VEKTEREN_SYSTEM_PROMPT.replace('__CUSTOMER_DATA__', () => JSON.stringify(customer, null, 2)).replace('__OFFERS__', () => JSON.stringify(offers, null, 2)).replace('__PRIORITIES__', () => JSON.stringify(priorities, null, 2)) }, ...messages.map(toProviderMessage)]
+  // Keep tool selection separate from structured presentation. Combining both
+  // on Gemini's compatibility endpoint can force an unwanted action call.
+  const requestCompletion = (structured: boolean) => fetch(`${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_API_KEY}` },
     body: JSON.stringify({
       model: AI_MODEL,
-      messages: [{ role: 'system', content: VEKTEREN_SYSTEM_PROMPT.replace('__CUSTOMER_DATA__', () => JSON.stringify(customer, null, 2)).replace('__OFFERS__', () => JSON.stringify(offers, null, 2)).replace('__PRIORITIES__', () => JSON.stringify(priorities, null, 2)) }, ...messages.flatMap(toProviderMessages)],
-      tools: [coverageTool, carDamageTool, blocksTool],
-      parallel_tool_calls: false,
+      messages: [...providerMessages, { role: 'system', content: structured
+        ? 'Gi det endelige svaret med text og blocks etter svarskjemaet. Ingen endring er utført i denne runden. Ikke påstå at du har endret profilen.'
+        : 'Denne runden velger bare handling, ikke det endelige svaret. Ved spørsmål om familien eller barna er dekket på en reise til Thailand, kall review_family_travel for å vise dagens dekning før forslag. Ved en konkret ny bilskade (bulk, ripe, påkjørsel, kollisjon) må du kalle start_car_damage_flow nå, uten å be om bekreftelse. Dette starter bare spørsmål i appen, det melder ikke skaden. Ved en uttrykkelig konkret dekningsendring må du kalle update_mock_coverage. Ved øvrige spørsmål og hilsener skal du ikke kalle verktøy. Svar da bare OK; appen lager det endelige svaret separat.' }],
+      ...(structured ? { response_format: format } : { tools: [coverageTool, carDamageTool, travelReviewTool], tool_choice: 'auto', parallel_tool_calls: false }),
     }),
   })
 
+  const response = await requestCompletion(false)
   if (!response.ok) return error(`AI-leverandøren svarte ${response.status}: ${await response.text()}`, 502)
 
-  const data = (await response.json()) as { choices?: { message?: { content?: string; tool_calls?: { function: { name: string; arguments: string } }[] } }[] }
-  const message = data.choices?.[0]?.message
+  const data = (await response.json()) as { choices?: { finish_reason?: string; message?: { content?: string; tool_calls?: { function: { name: string; arguments: string } }[] } }[] }
+  const choice = data.choices?.[0]
+  if (!choice || (choice.finish_reason !== 'stop' && choice.finish_reason !== 'tool_calls')) return error('Vekter’n kunne ikke fullføre svaret. Ingenting er endret. Prøv igjen.', 422)
+  const message = choice.message
   const calls = message?.tool_calls ?? []
+  if (calls.length === 1 && calls[0].function.name === 'review_family_travel') {
+    const review = travelReviewReply(customer)
+    if (review) return Response.json(review)
+    // Family already covered or no applicable policy: explain current data normally.
+  }
   if (calls.length === 1 && calls[0].function.name === 'start_car_damage_flow') {
     // The browser renders the scripted first step; the reply doubles as its text.
     return Response.json({ reply: carDamageTexts.start, actions: [], flow: CAR_DAMAGE_FLOW })
   }
-  if (calls.length === 1 && calls[0].function.name === 'reply_with_blocks') {
-    try {
-      return Response.json({ ...parseBlocksReply(calls[0].function.arguments, customer), actions: [] })
-    } catch {
-      return error('Vekter’n svarte med et kort appen ikke kan vise. Ingenting er endret. Prøv igjen.', 422)
-    }
-  }
-  if (calls.length) {
+  if (calls.length && !(calls.length === 1 && calls[0].function.name === 'review_family_travel')) {
     // Validate the entire action before returning it; the browser applies it
     // atomically with the assistant message. Never mutate server-global data.
     try {
@@ -225,5 +238,16 @@ export async function chat(messages: ApiChatMessage[], customer: MockCustomer, p
       return error('Denne endringen støttes ikke ennå. Ingenting er endret. Prøv å presisere ønsket endring.', 422)
     }
   }
-  return Response.json({ reply: (message?.content ?? '').replace(DISCLAIMER_PATTERN, '').trim(), actions: [] })
+  // No action was selected. Only this schema-constrained completion can supply
+  // customer-visible text; the routing completion's prose is never rendered.
+  const replyResponse = await requestCompletion(true)
+  if (!replyResponse.ok) return error(`AI-leverandøren svarte ${replyResponse.status}: ${await replyResponse.text()}`, 502)
+  try {
+    const replyData = await replyResponse.json() as typeof data
+    const replyChoice = replyData.choices?.[0]
+    if (replyChoice?.finish_reason !== 'stop' || replyChoice.message?.tool_calls?.length) throw new Error('Ufullstendig svar.')
+    return Response.json({ ...parseReply(replyChoice.message?.content ?? '', customer), actions: [] })
+  } catch {
+    return error('Vekter’n svarte i et format appen ikke kan vise. Ingenting er endret. Prøv igjen.', 422)
+  }
 }
