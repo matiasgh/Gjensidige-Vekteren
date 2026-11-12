@@ -38,7 +38,7 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const isCar = insurance.coverageId === 'car-kasko'
-  const canEdit = insurance.provider === 'Gjensidige' && !insurance.employer
+  const canEdit = insurance.provider === 'Gjensidige' && !insurance.employer && !!insurance.coverages
   const isWork = !!insurance.employer
   const price = canEdit ? insuranceMonthlyPrice(insurance, options) : insurance.monthlyPriceNok
   const changes = insurance.coverages?.filter(({ option }) => options[option] !== insurance.optionalCoverages?.[option]) ?? []
@@ -72,7 +72,7 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
       <Badge className={`rounded-full border-0 px-3 py-1 text-xs font-medium ${isWork ? 'bg-[var(--employer)] text-background' : insurance.provider === 'If' ? 'bg-white text-background' : ''}`}>{isWork ? `Via ${insurance.employer}` : insurance.provider}</Badge>
     </div>
     <h1 className={`font-display ${isCar ? 'text-[32px] leading-9' : 'text-4xl leading-10'}`}>{insurance.displayName}{isCar && ` · ${insurance.vehicle}`}</h1>
-    {isWork ? <p className="leading-6 text-muted-foreground">Betalt av arbeidsgiver · gjelder deg, opptil {insurance.maxTripDays} dager per reise</p> : <div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(price)}</p><span className="text-muted-foreground">/ mnd</span></div>}
+    {isWork ? <p className="leading-6 text-muted-foreground">Betalt av arbeidsgiver · gjelder deg, opptil {insurance.maxTripDays} dager per reise</p> : insurance.oneTimePriceNok !== undefined ? <div className="flex flex-col gap-1"><div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(insurance.oneTimePriceNok)}</p><span className="text-muted-foreground">engangs</span></div><p className="leading-6 text-muted-foreground">{insurance.coverage}{insurance.insuredPeople && ` · ${insurance.insuredPeople.length} personer`}</p></div> : <div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(price)}</p><span className="text-muted-foreground">/ mnd</span></div>}
     {isCar && <p className="text-sm text-muted-foreground">Egenandel kr {money(insurance.collisionDeductibleNok ?? 0)} · Fornyes {insurance.renewalDate}</p>}
     {canEdit ? <>
       <section aria-labelledby="policy-coverages" className="w-full">
@@ -90,7 +90,10 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
       {(insurance.coverageSummary?.includes ?? insurance.includes) && <CoverageList title="Dekker" items={insurance.coverageSummary?.includes ?? insurance.includes!} />}
       {(insurance.coverageSummary?.excludes ?? insurance.excludes) && <CoverageList title="Dekker ikke" items={insurance.coverageSummary?.excludes ?? insurance.excludes!} excluded />}
       {isWork && <PolicyNote locked>Dekningene kan ikke endres her. Avtalen styres av arbeidsgiveren din.</PolicyNote>}
-      {!isWork && <PolicyNote locked>Dekningene kan ikke endres her. Kontakt {insurance.provider} for å endre avtalen.</PolicyNote>}
+      {insurance.note && insurance.oneTimePriceNok !== undefined && <PolicyNote>{insurance.note}</PolicyNote>}
+      {!isWork && (insurance.oneTimePriceNok !== undefined
+        ? <PolicyNote>Dette er en forenklet oversikt over en fiktiv demoavtale. Spør meg om du vil vite mer om dekningene.</PolicyNote>
+        : <PolicyNote locked>Dekningene kan ikke endres her. Kontakt {insurance.provider} for å endre avtalen.</PolicyNote>)}
     </>}
     <div className="min-h-4 flex-1" />
     {notice && <div role="status" aria-live="polite" className="fixed right-4 bottom-[max(16px,env(safe-area-inset-bottom))] left-4 z-50 flex items-start gap-3 rounded-xl border border-primary/40 bg-card p-4 text-sm shadow-lg lg:left-auto lg:max-w-md"><Check aria-hidden="true" className="size-5 shrink-0 text-primary" /><p className="flex-1">{notice}</p><Button type="button" size="icon-sm" variant="ghost" aria-label="Lukk bekreftelsen" onClick={() => setNotice('')}><X className="size-4" /></Button></div>}
@@ -114,11 +117,24 @@ export default function Home() {
   const navigate = useNavigate()
   const [message, setMessage] = useState('')
   const [chatError, setChatError] = useState('')
+  // A policy just added in the chat ("Se oversikten"), highlighted in the overview.
+  const [highlight, setHighlight] = useState<string | null>(null)
+  const highlighted = highlight ?? params.get('markert')
   const customer = state?.customer
   const insurance = customer?.insurances.find((item) => item.coverageId === params.get('insurance'))
   const total = customer?.insurances.reduce((sum, item) => sum + item.monthlyPriceNok, 0) ?? 0
   const firstName = customer?.name.split(' ')[0]
   const initials = customer?.name.split(' ').map((part) => part[0]).slice(0, 2).join('')
+
+  useEffect(() => {
+    if (highlighted && customer) document.getElementById(`policy-${highlighted}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [highlighted, !!customer])
+
+  // Desktop keeps the overview column next to the chat; mobile navigates to it.
+  function openOverview(coverageId?: string) {
+    if (window.matchMedia('(min-width: 1024px)').matches) setHighlight(coverageId ?? null)
+    else navigate(coverageId ? `/?markert=${encodeURIComponent(coverageId)}` : '/')
+  }
 
   if (params.has('steg')) return <Navigate to={`/onboarding?steg=${encodeURIComponent(params.get('steg') ?? '1')}`} replace />
   if (state && !state.onboarding.completed) return <Navigate to="/onboarding" replace />
@@ -173,7 +189,7 @@ export default function Home() {
               if (!policies.length) return null
               const item = policies[0]
               const Icon = icons[category]
-              return <div key={category}><InsuranceRow icon={<Icon strokeWidth={1.5} />} title={category} provider={item.employer ? 'Via jobb' : item.provider} price={item.employer ? undefined : `kr ${money(policies.reduce((sum, policy) => sum + policy.monthlyPriceNok, 0))}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />{policies.length > 1 && <div className="flex gap-4 py-2 pl-9">{policies.map((policy) => <Link key={policy.coverageId} to={`/?insurance=${encodeURIComponent(policy.coverageId)}`} className="text-sm text-muted-foreground underline underline-offset-4">{policy.displayName}</Link>)}</div>}</div>
+              return <div key={category}><InsuranceRow icon={<Icon strokeWidth={1.5} />} title={category} provider={item.employer ? 'Via jobb' : item.provider} price={item.employer ? undefined : `kr ${money(policies.reduce((sum, policy) => sum + policy.monthlyPriceNok, 0))}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />{policies.length > 1 && <div className="flex flex-wrap gap-4 py-2 pl-9">{policies.map((policy) => <Link key={policy.coverageId} id={`policy-${policy.coverageId}`} to={`/?insurance=${encodeURIComponent(policy.coverageId)}`} className={`text-sm underline underline-offset-4 ${policy.coverageId === highlighted ? 'rounded-sm font-bold text-primary ring-2 ring-primary ring-offset-4 ring-offset-background' : 'text-muted-foreground'}`}>{policy.displayName}{policy.coverageId === highlighted && <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground no-underline">Ny</span>}</Link>)}</div>}</div>
             })}
           </nav>
         </div>
@@ -187,7 +203,7 @@ export default function Home() {
       </>}
     </aside>
     <div className={`${insurance || isChat ? 'block' : 'hidden'} min-w-0 flex-1 lg:block lg:h-dvh lg:overflow-y-auto`}>
-      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCoverages} onAsk={startChat} chatError={chatError} /></div> : damageFlow ? <CarDamageScreen key={location.pathname} flow={damageFlow} state={state} setState={setState} /> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
+      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCoverages} onAsk={startChat} chatError={chatError} /></div> : damageFlow ? <CarDamageScreen key={location.pathname} flow={damageFlow} state={state} setState={setState} /> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} onOpenOverview={openOverview} />}
     </div>
   </div>
 }

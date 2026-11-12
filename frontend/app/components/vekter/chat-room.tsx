@@ -4,11 +4,13 @@ import { ArrowLeft, ArrowRight, CarFront, CircleHelp, House, LoaderCircle, Phone
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
-import { AssistantIdentity, AssistantMark, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, QuickReplies } from '~/components/vekter'
-import { analysisText, CAR_DAMAGE_FLOW, carCoverage, carDamageTexts, DAMAGE_PHOTO_CONTENT, type CarDamageKind } from '~/lib/car-damage'
-import { applyMockAction, isMockAction } from '~/lib/mock-actions'
-import { optionLabels } from '~/lib/mock-customer'
-import { createConversation, createDefaultState, toApiMessages, type ChatMessage } from '~/lib/mock-state'
+import { ApproveOfferSheet, AssistantIdentity, AssistantMark, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, CoverageCheck, OfferCard, QuickReplies, ReceiptCard, TipCard } from '~/components/vekter'
+import { analysisText, CAR_DAMAGE_FLOW, carCoverage, carDamageTexts, DAMAGE_PHOTO_CONTENT } from '~/lib/car-damage'
+import { coverageCheckItems, isAiBlockList, type AiBlock, type QuickReplyOption } from '~/lib/chat-blocks'
+import { applyMockAction, isCoverageAction, isMockAction, type MockAction } from '~/lib/mock-actions'
+import { optionLabels, type MockCustomer } from '~/lib/mock-customer'
+import { addDays, createConversation, createDefaultState, MAX_REMINDERS, OFFER_APPROVED_KIND, receiptLines, toApiMessages, type ChatMessage, type ChatMessageKind } from '~/lib/mock-state'
+import { getOffer, isOfferPurchased } from '~/lib/travel-offer'
 import type { useMockState } from '~/lib/use-mock-state'
 
 const suggestions = [
@@ -20,14 +22,18 @@ const suggestions = [
 
 const coverageOptionLabels = optionLabels
 const PHOTO_ANALYSIS_DELAY_MS = 1200
-const awaitingPhotoKinds: (CarDamageKind | undefined)[] = ['damage-start', 'damage-photo-request', 'damage-injured']
+const APPROVED_CONTENT = 'Godkjent'
+const awaitingPhotoKinds: (ChatMessageKind | undefined)[] = ['damage-start', 'damage-photo-request', 'damage-injured']
 const damageActions = [
   { to: '/skade/meld', label: 'Meld skade' },
   { to: '/skade/verksted', label: 'Finn verksted' },
   { to: '/skade/berging', label: 'Kontakt bilbergning' },
 ]
 
-export default function ChatRoom({ state, setState, storageError }: ReturnType<typeof useMockState>) {
+const blocksOf = (message: ChatMessage, type: AiBlock['type']) => message.blocks?.filter((block) => block.type === type) ?? []
+
+/** `onOpenOverview` shows the overview (and highlights a newly added policy); it never takes a URL from the AI. */
+export default function ChatRoom({ state, setState, storageError, onOpenOverview }: ReturnType<typeof useMockState> & { onOpenOverview?: (coverageId?: string) => void }) {
   const [searchParams] = useSearchParams()
   const initialQuestion = useRef(searchParams.get('question'))
   const activeConversation = state?.conversations.find(({ id }) => id === state.activeConversationId)
@@ -40,6 +46,12 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
   const [resetNotice, setResetNotice] = useState('')
   const [loadingText, setLoadingText] = useState('Vekter’n tenker …')
   const [attachOpen, setAttachOpen] = useState(false)
+  const [reviewOfferId, setReviewOfferId] = useState<string | null>(null)
+  const [offerError, setOfferError] = useState('')
+  const reviewOffer = getOffer(reviewOfferId)
+  // Offer buttons only work on the newest offer card, until Kari answers it.
+  const lastOfferIndex = messages.map((message) => blocksOf(message, 'offer').length > 0).lastIndexOf(true)
+  const offerAnswered = messages.slice(lastOfferIndex + 1).some(({ role }) => role === 'user')
   const pendingRef = useRef(false)
   const logRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
@@ -48,8 +60,8 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [messages, isLoading, error])
 
-  async function requestReply(next: ChatMessage[]) {
-    if (pendingRef.current || !state) return
+  async function requestReply(next: ChatMessage[], customer: MockCustomer | undefined = state?.customer) {
+    if (pendingRef.current || !state || !customer) return
     const conversationId = state.activeConversationId
     pendingRef.current = true
     setError('')
@@ -58,16 +70,18 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: toApiMessages(next, state.customer.firstName), customer: state.customer, priorities: state.onboarding.priorities }),
+        body: JSON.stringify({ messages: toApiMessages(next, customer.firstName), customer, priorities: state.onboarding.priorities }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? 'Noe gikk galt.')
       if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error('Vekter’n svarte ikke. Prøv igjen.')
-      if (!Array.isArray(data.actions) || !data.actions.every(isMockAction)) throw new Error('Vekter’n returnerte en ugyldig endring. Ingen demodata er endret.')
+      // Purchases are never accepted from the server; only the approval sheet can buy.
+      if (!Array.isArray(data.actions) || !data.actions.every(isCoverageAction)) throw new Error('Vekter’n returnerte en ugyldig endring. Ingen demodata er endret.')
+      if (data.blocks !== undefined && !isAiBlockList(data.blocks, { customer, fresh: true })) throw new Error('Vekter’n svarte med et kort appen ikke kan vise. Prøv igjen.')
       // The AI only decides that the car damage flow starts; its first step is scripted.
       const reply: ChatMessage = data.flow === CAR_DAMAGE_FLOW
         ? { role: 'assistant', content: carDamageTexts.start, kind: 'damage-start' }
-        : { role: 'assistant', content: data.reply }
+        : { role: 'assistant', content: data.reply, ...(data.blocks ? { blocks: data.blocks } : {}) }
       setState((current) => current && ({
         ...current,
         customer: data.actions.reduce(applyMockAction, current.customer),
@@ -123,6 +137,72 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
     setMessages([...messages, { role: 'user', content: option }, injured
       ? { role: 'assistant', content: carDamageTexts.injured, kind: 'damage-injured' }
       : { role: 'assistant', content: carDamageTexts.photoRequest, kind: 'damage-photo-request' }])
+  }
+
+  function hasReminder(title: string) {
+    return !!state?.reminders.some((reminder) => reminder.title === title)
+  }
+
+  function setReminder(title: string, days: number) {
+    if (!state || hasReminder(title) || state.reminders.length >= MAX_REMINDERS) return
+    setState({ ...state, reminders: [...state.reminders, { title, dueDate: addDays(days) }] })
+  }
+
+  function selectQuickReply(option: QuickReplyOption) {
+    if (option.action === 'open-overview') {
+      const receipt = [...messages].reverse().find((message) => message.receipt)?.receipt
+      onOpenOverview?.(getOffer(receipt?.offerId)?.policy.coverageId)
+    } else send(option.label)
+  }
+
+  function reviewOfferSheet(offerId: string) {
+    setOfferError('')
+    setReviewOfferId(offerId)
+  }
+
+  // The only path that buys an offer: Kari presses "Godkjenn og betal" in the sheet.
+  function approveOffer() {
+    if (pendingRef.current || !state || !reviewOffer) return
+    const action: MockAction = { type: 'buy-offer', offerId: reviewOffer.id }
+    if (!isMockAction(action)) return setOfferError('Forslaget finnes ikke i prototypen.')
+    let customer: MockCustomer
+    try {
+      customer = applyMockAction(state.customer, action)
+    } catch (err) {
+      return setOfferError(err instanceof Error ? err.message : 'Kunne ikke legge til forsikringen.')
+    }
+    const tipTitles = messages.flatMap((message) => blocksOf(message, 'tip').map((block) => block.type === 'tip' && block.remindInDays ? block.title : ''))
+    const reminderSet = tipTitles.some((title) => title && hasReminder(title))
+    const next: ChatMessage[] = [...messages, { role: 'user', content: APPROVED_CONTENT, kind: OFFER_APPROVED_KIND, receipt: { offerId: reviewOffer.id, reminderSet } }]
+    setState({ ...state, customer, conversations: state.conversations.map((item) => item.id === state.activeConversationId ? { ...item, messages: next } : item) })
+    setReviewOfferId(null)
+    void requestReply(next, customer)
+  }
+
+  function renderBlocks(message: ChatMessage, index: number) {
+    if (!state || !message.blocks) return null
+    const isLast = index === messages.length - 1
+    return <>
+      {message.blocks.map((block, blockIndex) => {
+        switch (block.type) {
+          case 'coverage-check': {
+            const check = coverageCheckItems(state.customer, block.coverageId)
+            return check && <CoverageCheck key={blockIndex} title={check.title} items={check.items} />
+          }
+          case 'tip':
+            return <TipCard key={blockIndex} title={block.title} body={block.body} remindInDays={block.remindInDays} reminderSet={hasReminder(block.title)} onRemind={() => setReminder(block.title, block.remindInDays!)} />
+          case 'offer': {
+            const offer = getOffer(block.offerId)
+            if (!offer) return null
+            const purchased = isOfferPurchased(state.customer.insurances, offer.id)
+            return <OfferCard key={blockIndex} offer={offer} purchased={purchased} disabled={isLoading || index !== lastOfferIndex || offerAnswered} onReview={() => reviewOfferSheet(offer.id)} onDecline={() => send('Nei takk')} />
+          }
+          default:
+            return null
+        }
+      })}
+      {isLast && blocksOf(message, 'quick-replies').map((block, blockIndex) => block.type === 'quick-replies' && <QuickReplies key={`q${blockIndex}`} options={block.options.map(({ label }) => label)} disabled={isLoading} onSelect={(label) => selectQuickReply(block.options.find((option) => option.label === label)!)} />)}
+    </>
   }
 
   function scrollToEnd() {
@@ -215,6 +295,8 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
                 <div role="log" aria-label="Samtale" aria-live="polite" className="space-y-4">
                   {messages.map((message, index) => <div key={index} className="space-y-3">
                     {message.image ? <ChatImageBubble src={message.image} alt="Bilde av skaden" onLoad={scrollToEnd} /> : <ChatBubble role={message.role} className="break-words"><p className="whitespace-pre-wrap">{message.content}</p></ChatBubble>}
+                    {message.receipt && getOffer(message.receipt.offerId) && <ReceiptCard title={`Ferdig. Familien er dekket fra ${getOffer(message.receipt.offerId)!.startLabel}.`} lines={receiptLines(message.receipt)} />}
+                    {renderBlocks(message, index)}
                     {message.kind === 'damage-start' && index === messages.length - 1 && <QuickReplies options={[carDamageTexts.uninjuredReply, carDamageTexts.injuredReply]} onSelect={answerSafety} disabled={isLoading} />}
                     {message.kind === 'damage-injured' && <Button asChild variant="outline" size="sm" className="h-10 rounded-full border-[#7f8bc0] bg-transparent px-4"><a href="tel:113"><Phone /> Ring 113</a></Button>}
                     {message.kind === 'damage-actions' && index === lastActionsIndex && <div className="flex flex-col gap-3">{damageActions.map(({ to, label }, actionIndex) => <Button key={to} asChild variant={actionIndex === 0 ? 'default' : 'outline'} className={`h-12 w-full rounded-sm text-base font-bold ${actionIndex > 0 ? 'border-[#7f8bc0] bg-transparent' : ''}`}><Link to={to}>{label}</Link></Button>)}</div>}
@@ -252,6 +334,7 @@ export default function ChatRoom({ state, setState, storageError }: ReturnType<t
             <div className="mx-auto w-full max-w-3xl">
               <ChatComposer key={conversation} inputRef={composerRef} onSend={send} onAttach={() => setAttachOpen(true)} disabled={isLoading || !state} placeholder={awaitingPhoto ? 'Skriv eller legg ved bilde …' : undefined} />
               <AttachSheet open={attachOpen} onOpenChange={setAttachOpen} onImage={sendPhoto} />
+              {reviewOffer && <ApproveOfferSheet offer={reviewOffer} open={!!reviewOfferId} onOpenChange={(open) => { if (!open) setReviewOfferId(null) }} onApprove={approveOffer} error={offerError} />}
               <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">Vekter’n kan ta feil. Sjekk viktig informasjon.</p>
             </div>
           </div>

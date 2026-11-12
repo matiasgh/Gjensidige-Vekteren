@@ -1,4 +1,5 @@
 import { insuranceMonthlyPrice } from './mock-actions'
+import { insuranceOffers } from './travel-offer'
 export type InsuranceProvider = 'Gjensidige' | 'If' | 'Via jobb – Arnesen Bygg AS'
 export type InsuranceCategory = 'Hus og innbo' | 'Bil' | 'Reise' | 'Familie og barn' | 'Bedrift'
 
@@ -17,6 +18,8 @@ export type MockInsurance = {
   coverage: string
   coverageId: string
   monthlyPriceNok: number
+  // One-off price for single-trip policies bought in the chat; they add nothing to the monthly total.
+  oneTimePriceNok?: number
   displayName: string
   employer?: string
   vehicle?: string
@@ -74,7 +77,7 @@ export const mockCustomer: MockCustomer = {
     role: 'Prosjektleder',
     ownCompany: { name: 'Haugen Interiør AS', description: 'Lite enkeltmannsdrevet interiørfirma ved siden av jobben', employees: 0 },
   },
-  plannedTrips: [{ destination: 'USA', period: 'Juli', travellers: ['Kari Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'] }],
+  plannedTrips: [{ destination: 'Thailand', period: '14. juli – 4. august (3 uker)', travellers: ['Kari Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'] }],
   insurances: [
     {
       type: 'Husforsikring',
@@ -160,8 +163,8 @@ export const mockCustomer: MockCustomer = {
       insuredPeople: ['Kari Haugen'],
       coverageSummary: {
         basis: fictionalSummary,
-        includes: ['Sykdom og akutt hjelp på reise, for Kari', 'Bagasje og forsinkelse, for Kari', 'Gjelder både jobbreiser og fritidsreiser'],
-        excludes: ['Barn og øvrig familie', 'Aktiviteter som dykking og scooter', 'Avbestilling av fritidsreiser'],
+        includes: ['Sykdom og akutt hjelp, for deg', 'Bagasje og forsinkelse'],
+        excludes: ['Barna er ikke med', 'Aktiviteter som dykking og scooter', 'Avbestilling av fritidsreiser'],
       },
     },
     {
@@ -212,7 +215,7 @@ export const mockCustomer: MockCustomer = {
     },
     {
       title: 'Barna mangler på reise',
-      reason: 'Jobbens reiseforsikring dekker bare deg. Familien er ikke med til USA i juli.',
+      reason: 'Jobbens reiseforsikring dekker bare deg. Familien er ikke med til Thailand i juli.',
       actionLabel: 'Se hva det koster',
     },
     {
@@ -270,12 +273,28 @@ function matchesShape(value: unknown, template: unknown): boolean {
   return typeof value === typeof template && (typeof value !== 'number' || Number.isFinite(value))
 }
 
+function isDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false
+  const keys = Object.keys(a)
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && isDeepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]))
+}
+
+// Policies bought from a known offer are appended after the seed policies and
+// must match that offer exactly (once each), so stored data cannot invent policies.
+const offerPolicies = Object.values(insuranceOffers).map(({ policy }) => policy)
+
 export function isMockCustomer(value: unknown): value is MockCustomer {
-  if (!matchesShape(value, mockCustomer)) return false
+  if (!value || typeof value !== 'object' || !Array.isArray((value as MockCustomer).insurances)) return false
+  const all = (value as MockCustomer).insurances
+  const seedCount = mockCustomer.insurances.length
+  const bought = all.slice(seedCount)
+  if (all.length < seedCount || !bought.every((policy) => offerPolicies.some((offer) => isDeepEqual(policy, offer)))
+    || new Set(bought.map((policy) => policy.coverageId)).size !== bought.length) return false
+  if (!matchesShape({ ...value, insurances: all.slice(0, seedCount) }, mockCustomer)) return false
   const customer = value as MockCustomer
-  return customer.insurances.length === mockCustomer.insurances.length
-    && customer.gapAnalysis.length === mockCustomer.gapAnalysis.length
-    && customer.insurances.every((insurance, index) => {
+  return customer.gapAnalysis.length === mockCustomer.gapAnalysis.length
+    && customer.insurances.slice(0, seedCount).every((insurance, index) => {
       const seed = mockCustomer.insurances[index]
       if (insurance.type !== seed.type || insurance.category !== seed.category || insurance.provider !== seed.provider) return false
       if (insurance.employer !== seed.employer || insurance.monthlyPriceNok < 0) return false
