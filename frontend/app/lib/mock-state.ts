@@ -1,4 +1,4 @@
-import { carDamageKinds, MAX_IMAGE_DATA_URL_LENGTH, type CarDamageKind } from './car-damage'
+import { carDamageKinds, DAMAGE_PHOTO_CONTENT, MAX_IMAGE_DATA_URL_LENGTH, type CarDamageKind } from './car-damage'
 import { isAiBlockList, type AiBlock } from './chat-blocks'
 import { createDefaultCustomer, isMockCustomer, mockCustomer, type MockCustomer } from './mock-customer'
 import { insuranceMonthlyPrice } from './mock-actions'
@@ -83,7 +83,7 @@ export const receiptLines = (receipt: OfferReceipt) => ['Kvittering sendt på e-
 // Receipts become short notes; cards are sent along as structured blocks.
 export function toApiMessages(messages: ChatMessage[], firstName: string): ApiChatMessage[] {
   return messages.map(({ role, content, image, blocks, receipt, followUp, travelStage }) => {
-    if (image) return { role, content: `[${firstName} sendte et bilde av skaden]` }
+    if (image) return { role, content: content === DAMAGE_PHOTO_CONTENT ? `[${firstName} sendte et bilde av skaden]` : `[${firstName} sendte et bilde av skaden] ${content}` }
     const offer = receipt && getOffer(receipt.offerId)
     if (receipt && offer) return { role, content: `[${firstName} godkjente ${offer.title}. Appen viste kvitteringen: ${offer.title} er lagt til i profilen, ${receiptLines(receipt).join(', ').toLowerCase()}.]` }
     // The server replays assistant answers using the structured response contract.

@@ -47,6 +47,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
   const [resetNotice, setResetNotice] = useState('')
   const [loadingText, setLoadingText] = useState('Vekter’n tenker …')
   const [attachOpen, setAttachOpen] = useState(false)
+  const [pendingImage, setPendingImage] = useState<string>()
   const [reviewOfferId, setReviewOfferId] = useState<string | null>(null)
   const [offerError, setOfferError] = useState('')
   const reviewOffer = getOffer(reviewOfferId)
@@ -127,12 +128,6 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
     else void requestReply(next)
   }
 
-  function sendPhoto(image: string) {
-    if (pendingRef.current || !state) return
-    const next: ChatMessage[] = [...messages, { role: 'user', content: DAMAGE_PHOTO_CONTENT, image }]
-    setMessages(next)
-    analysePhoto(next)
-  }
 
   function answerSafety(option: string) {
     if (pendingRef.current || !state) return
@@ -213,11 +208,12 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }
 
-  function send(text: string) {
-    if (!text.trim() || pendingRef.current || !state) return
-    const next: ChatMessage[] = [...messages, { role: 'user', content: text.trim() }]
+  function send(text: string, image?: string) {
+    if ((!text.trim() && !image) || pendingRef.current || !state) return
+    const next: ChatMessage[] = [...messages, { role: 'user', content: text.trim() || DAMAGE_PHOTO_CONTENT, ...(image ? { image } : {}) }]
+    setPendingImage(undefined)
     setState({ ...state, conversations: state.conversations.map((item) => item.id === state.activeConversationId ? { ...item, messages: next } : item) })
-    void requestReply(next)
+    respond(next)
   }
 
   useEffect(() => {
@@ -234,6 +230,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
     const next = createConversation()
     setState({ ...state, conversations: [...state.conversations, next], activeConversationId: next.id })
     setError('')
+    setPendingImage(undefined)
     setConversation((value) => value + 1)
   }
 
@@ -299,7 +296,10 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
                 <h1 className="sr-only">Samtale med Vekter’n</h1>
                 <div role="log" aria-label="Samtale" aria-live="polite" className="space-y-4">
                   {messages.map((message, index) => <div key={index} className="space-y-3">
-                    {message.image ? <ChatImageBubble src={message.image} alt="Bilde av skaden" onLoad={scrollToEnd} /> : <ChatBubble role={message.role} className="break-words"><p className="whitespace-pre-wrap">{message.content}</p></ChatBubble>}
+                    {message.image ? <>
+                      <ChatImageBubble src={message.image} alt="Bilde av skaden" onLoad={scrollToEnd} />
+                      {message.content !== DAMAGE_PHOTO_CONTENT && <ChatBubble role={message.role} className="mt-2 break-words"><p className="whitespace-pre-wrap">{message.content}</p></ChatBubble>}
+                    </> : <ChatBubble role={message.role} className="break-words"><p className="whitespace-pre-wrap">{message.content}</p></ChatBubble>}
                     {message.receipt && getOffer(message.receipt.offerId) && <ReceiptCard title={`Ferdig. Familien er dekket fra ${getOffer(message.receipt.offerId)!.startLabel}.`} lines={receiptLines(message.receipt)} />}
                     {renderBlocks(message, index)}
                     {message.kind === 'damage-start' && index === messages.length - 1 && <QuickReplies options={[carDamageTexts.uninjuredReply, carDamageTexts.injuredReply]} onSelect={answerSafety} disabled={isLoading} />}
@@ -337,8 +337,8 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
 
           <div className="shrink-0 border-t border-border/40 bg-background/70 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8 sm:pt-5">
             <div className="mx-auto w-full max-w-3xl">
-              <ChatComposer key={conversation} inputRef={composerRef} onSend={send} onAttach={() => setAttachOpen(true)} disabled={isLoading || !state} placeholder={awaitingPhoto ? 'Skriv eller legg ved bilde …' : undefined} />
-              <AttachSheet open={attachOpen} onOpenChange={setAttachOpen} onImage={sendPhoto} />
+              <ChatComposer key={conversation} inputRef={composerRef} onSend={(text) => send(text, pendingImage)} onAttach={() => setAttachOpen(true)} attachment={pendingImage} onRemoveAttachment={() => setPendingImage(undefined)} disabled={isLoading || !state} placeholder={awaitingPhoto ? 'Skriv eller legg ved bilde …' : undefined} />
+              <AttachSheet open={attachOpen} onOpenChange={setAttachOpen} onImage={setPendingImage} />
               {reviewOffer && <ApproveOfferSheet offer={reviewOffer} open={!!reviewOfferId} onOpenChange={(open) => { if (!open) setReviewOfferId(null) }} onApprove={approveOffer} error={offerError} />}
               <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">Vekter’n kan ta feil. Sjekk viktig informasjon.</p>
             </div>
