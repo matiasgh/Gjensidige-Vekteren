@@ -62,8 +62,8 @@ const fictionalSummary = 'Fiktivt, forenklet sammendrag for demo – ikke reelle
 
 // Only policies in this list are active. Catalogue products are not automatically owned.
 export const mockCustomer: MockCustomer = {
-  name: 'Kari Haugen',
-  firstName: 'Kari',
+  name: 'Lisbeth Haugen',
+  firstName: 'Lisbeth',
   dataType: 'Fiktiv kunde og fiktive avtalevalg for demo, ikke et faktisk forsikringsbevis',
   residenceCountry: 'Norge',
   home: { type: 'Enebolig', address: 'Furuvegen 14, 2318 Hamar (Innlandet)', builtYear: 1962, ownership: 'Selveier' },
@@ -73,7 +73,7 @@ export const mockCustomer: MockCustomer = {
     role: 'Prosjektleder',
     ownCompany: { name: 'Haugen Interiør AS', description: 'Lite enkeltmannsdrevet interiørfirma ved siden av jobben', employees: 0 },
   },
-  plannedTrips: [{ destination: 'Thailand', period: '14. juli – 4. august (3 uker)', travellers: ['Kari Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'] }],
+  plannedTrips: [{ destination: 'Thailand', period: '14. juli – 4. august (3 uker)', travellers: ['Lisbeth Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'] }],
   insurances: [
     {
       type: 'Husforsikring',
@@ -102,7 +102,7 @@ export const mockCustomer: MockCustomer = {
       displayName: 'Innbo',
       monthlyPriceNok: 160,
       includes: ['Brann- og vannskader på innbo', 'Tyveri og uhellsskader på innbo', 'Ansvar og rettshjelp'],
-      insuredPeople: ['Kari Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
+      insuredPeople: ['Lisbeth Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
       address: 'Furuvegen 14, 2318 Hamar',
       insuredAmountNok: 1500000,
       deductibleNok: 3000,
@@ -160,13 +160,13 @@ export const mockCustomer: MockCustomer = {
       maxTripDays: 70,
       provider: 'Gjensidige',
       coverage: 'Reise',
-      insuredPeople: ['Kari Haugen'],
+      insuredPeople: ['Lisbeth Haugen'],
       optionalCoverages: { travelMedical: true, baggageAndDelay: true, cancellation: true, familyTravel: false },
       coverages: [
         { option: 'travelMedical', title: 'Sykdom og akutt hjelp på reise', monthlyPriceNok: 50 },
         { option: 'baggageAndDelay', title: 'Bagasje og forsinkelse', monthlyPriceNok: 30 },
         { option: 'cancellation', title: 'Avbestilling', monthlyPriceNok: 20 },
-        { option: 'familyTravel', title: 'Familiedekning', monthlyPriceNok: 60, description: 'Utvider demoavtalen til Kari og de tre barna', tip: 'Reiseforsikringen gjelder bare deg. Vurder familiedekning før turen til Thailand.' },
+        { option: 'familyTravel', title: 'Familiedekning', monthlyPriceNok: 60, description: 'Utvider demoavtalen til Lisbeth og de tre barna', tip: 'Reiseforsikringen gjelder bare deg. Vurder familiedekning før turen til Thailand.' },
       ],
       coverageSummary: {
         basis: fictionalSummary,
@@ -200,7 +200,7 @@ export const mockCustomer: MockCustomer = {
       displayName: 'Livsforsikring',
       employer: 'Arnesen Bygg AS',
       monthlyPriceNok: 0,
-      insuredPeople: ['Kari Haugen'],
+      insuredPeople: ['Lisbeth Haugen'],
       coverageSummary: {
         basis: fictionalSummary,
         includes: ['Engangsutbetaling til etterlatte ved dødsfall etter avtalens vilkår'],
@@ -216,7 +216,7 @@ export const mockCustomer: MockCustomer = {
       displayName: 'Uføreforsikring',
       employer: 'Arnesen Bygg AS',
       monthlyPriceNok: 0,
-      insuredPeople: ['Kari Haugen'],
+      insuredPeople: ['Lisbeth Haugen'],
       coverageSummary: {
         basis: fictionalSummary,
         includes: ['Økonomisk støtte ved arbeidsuførhet etter avtalens vilkår'],

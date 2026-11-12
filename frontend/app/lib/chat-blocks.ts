@@ -29,7 +29,7 @@ const hasOnlyKeys = (value: object, required: string[], optional: string[] = [])
 export type BlockContext = {
   /** Customer used to check coverage/offer ids. Omit for stored history (shape check only). */
   customer?: MockCustomer
-  /** New replies may not offer something Kari already bought. */
+  /** New replies may not offer something Lisbeth already bought. */
   fresh?: boolean
 }
 

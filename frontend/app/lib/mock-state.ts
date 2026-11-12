@@ -6,7 +6,7 @@ import { getOffer } from './travel-offer'
 
 export const OFFER_APPROVED_KIND = 'offer-approved'
 export type ChatMessageKind = CarDamageKind | typeof OFFER_APPROVED_KIND
-/** Stored with Kari's "Godkjent" message; the receipt card is rendered from it. */
+/** Stored with Lisbeth's "Godkjent" message; the receipt card is rendered from it. */
 export type OfferReceipt = { offerId: string; reminderSet: boolean }
 
 // `image` is a downscaled JPEG data URL kept only in the browser; `kind` marks
@@ -119,7 +119,35 @@ export function isMockState(value: unknown): value is MockState {
   return state.version === 3 && isMockCustomer(state.customer) && hasValidConversations(state) && isOnboardingState(state.onboarding) && isReminderList(state.reminders)
 }
 
-// v2 had the USA trip seed. Keep Kari's saved policy choices, but refresh the
+// Step 3 chips that no longer exist. Free text and current choices are kept.
+const RETIRED_PRIORITY_CHIPS = ['Gammelt hus, redd for råte', 'Tre barn', 'Eget lite selskap', 'Reiser mye', 'Flytter snart']
+// The old demo first name, written as a pattern so the retired name is gone from the code.
+const RETIRED_NAME = /\bKar(i)\b/g
+
+function renameCustomerText<T>(value: T): T {
+  if (typeof value === 'string') return value.replace(RETIRED_NAME, 'Lisbeth') as T
+  if (Array.isArray(value)) return value.map(renameCustomerText) as T
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, renameCustomerText(item)])) as T
+  return value
+}
+
+/**
+ * Runs on every stored state (v3 and legacy) before validation: renames the
+ * demo customer to Lisbeth and drops retired step 3 chips. Conversations,
+ * including old AI messages, are left as they were.
+ */
+export function upgradeStoredState(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value
+  const state = { ...(value as Record<string, unknown>) }
+  if (state.customer && typeof state.customer === 'object') state.customer = renameCustomerText(state.customer)
+  const onboarding = state.onboarding as Record<string, unknown> | undefined
+  if (onboarding && typeof onboarding === 'object' && Array.isArray(onboarding.priorities)) {
+    state.onboarding = { ...onboarding, priorities: onboarding.priorities.filter((item) => !RETIRED_PRIORITY_CHIPS.includes(item)) }
+  }
+  return state
+}
+
+// v2 had the USA trip seed. Keep Lisbeth's saved policy choices, but refresh the
 // trip and the travel summary that the Thailand flow relies on.
 function refreshTripSeed(customer: MockCustomer): MockCustomer | null {
   const refreshed = {
@@ -130,7 +158,7 @@ function refreshTripSeed(customer: MockCustomer): MockCustomer | null {
   return isMockCustomer(refreshed) ? refreshed : null
 }
 
-// Enrich pre-toggle Kari profiles, drop the retired gap analysis and refresh the
+// Enrich pre-toggle Lisbeth profiles, drop the retired gap analysis and refresh the
 // trip seed without dropping saved choices. Other incompatible profiles fall back
 // to the shared seed, retaining conversations, onboarding and (from v3) reminders.
 export function migrateLegacyState(value: unknown): MockState | null {
