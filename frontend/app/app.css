@@ -77,6 +77,11 @@
 
 @layer base {
   * { border-color: var(--border); }
+
+  a[href]:not([aria-disabled="true"]),
+  :where(button, [role="button"]):not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 .vekter-theme :focus-visible {
