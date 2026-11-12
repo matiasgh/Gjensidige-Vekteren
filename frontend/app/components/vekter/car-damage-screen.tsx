@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '~/components/ui/button'
-import { AdvisorNote, ApprovedBadge, DetailRow, FlowScreen, StaticMap, StatusCheck } from '~/components/vekter'
+import { ActionStack, AdvisorNote, ApprovedBadge, DetailRow, FlowScreen, StaticMap, StatusCheck } from '~/components/vekter'
 import { bookingConfirmation, carCoverage, carDamageTexts, claimConfirmation, createCaseNumber, defaultClaimDetails, latestDamagePhoto, money, towOrder, withAssistantMessages, workshops, type CarCoverage, type CarDamageKind } from '~/lib/car-damage'
 import type { MockState } from '~/lib/mock-state'
 import { saveMockState, type useMockState } from '~/lib/use-mock-state'
@@ -11,8 +11,6 @@ export type CarDamageFlow = 'meld' | 'verksted' | 'berging'
 type Finish = (content: string, kind?: CarDamageKind) => void
 type ScreenProps = { coverage: CarCoverage | null; finish: Finish; error: string }
 
-const actionClass = 'h-[52px] w-full rounded-sm text-base font-bold! whitespace-normal lg:w-auto lg:self-center lg:px-6'
-const outlineClass = `${actionClass} border-[#7f8bc0] bg-transparent`
 
 function ErrorText({ error }: { error: string }) {
   return error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null
@@ -22,8 +20,7 @@ function ClaimScreen({ coverage, finish, error, photo }: ScreenProps & { photo?:
   const [details, setDetails] = useState(defaultClaimDetails)
   return <FlowScreen title="Skademelding" actions={<>
     <ErrorText error={error} />
-    <Button className={actionClass} onClick={() => finish(claimConfirmation(details, coverage, createCaseNumber()))}>Send skademelding</Button>
-    <Button asChild variant="outline" className={outlineClass}><Link to="/chat">Avbryt</Link></Button>
+    <ActionStack primary={<Button onClick={() => finish(claimConfirmation(details, coverage, createCaseNumber()))}>Send skademelding</Button>} secondary={<Button asChild><Link to="/chat">Avbryt</Link></Button>} />
   </>}>
     <AdvisorNote>Jeg har fylt ut det jeg kunne fra bildet og kontoen din. Sjekk og godkjenn.</AdvisorNote>
     <dl className="mt-3">
@@ -43,8 +40,7 @@ function WorkshopScreen({ coverage, finish, error }: ScreenProps) {
   const selected = workshops.find(({ id }) => id === selectedId) ?? workshops[0]
   return <FlowScreen title="Verksted nær deg" actions={<>
     <ErrorText error={error} />
-    <Button className={actionClass} onClick={() => finish(bookingConfirmation(selected, coverage))}>Book {selected.day} kl. {selected.time}</Button>
-    <p className="text-center text-sm leading-5 text-muted-foreground">Jeg viser bare verksteder som er godkjent og har ledig tid.</p>
+    <ActionStack primary={<Button onClick={() => finish(bookingConfirmation(selected, coverage))}>Book {selected.day} kl. {selected.time}</Button>} hint={<span className="block text-center">Jeg viser bare verksteder som er godkjent og har ledig tid.</span>} />
   </>}>
     <StaticMap pins={[{ x: 50, y: 50, kind: 'you' }, { x: 25, y: 34 }, { x: 75, y: 40 }, { x: 62, y: 78 }]} />
     {!coverage?.kasko && <AdvisorNote className="mt-4">Du har ikke kasko, så prisene er det du betaler selv.</AdvisorNote>}
@@ -63,8 +59,7 @@ function WorkshopScreen({ coverage, finish, error }: ScreenProps) {
 function TowScreen({ coverage, finish, error }: ScreenProps) {
   return <FlowScreen title="Bilbergning" actions={<>
     <ErrorText error={error} />
-    <Button className={actionClass} onClick={() => finish(carDamageTexts.towCalled)}>Ring bergeren</Button>
-    <Button variant="outline" className={outlineClass} onClick={() => finish(carDamageTexts.towCancelled)}>Avbryt bestilling</Button>
+    <ActionStack primary={<Button onClick={() => finish(carDamageTexts.towCalled)}>Ring bergeren</Button>} secondary={<Button onClick={() => finish(carDamageTexts.towCancelled)}>Avbryt bestilling</Button>} />
   </>}>
     <StaticMap className="h-40" pins={[{ x: 80, y: 30, kind: 'you' }, { x: 20, y: 72 }]} />
     <h2 className="mt-6 font-display text-[32px] leading-10">Bergingsbil er på vei</h2>

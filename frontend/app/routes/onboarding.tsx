@@ -10,7 +10,7 @@ import { cn } from '~/lib/utils'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
-import { AdvisorNote, AssistantIdentity, AssistantMark, ChatBubble, ChatComposer, CoverageRing, InsuranceRow, StepProgress } from '~/components/vekter'
+import { ActionStack, AdvisorNote, AssistantIdentity, AssistantMark, ChatBubble, ChatComposer, CoverageRing, InsuranceRow, StepProgress } from '~/components/vekter'
 
 const STEP_COUNT = 7
 const TICK_MS = 600
@@ -283,8 +283,7 @@ function ExistingInsurance({ sources }: { sources: OnboardingData['sources'] }) 
       </div>
       <AdvisorNote className="text-muted-foreground">Du samtykker til hva jeg får lese, og kan trekke det tilbake når som helst.</AdvisorNote>
       <div className="flex-1" />
-      <StepLink to={stepHref(5)} state={READ_TERMS}>Fortsett</StepLink>
-      <Button asChild variant="link" className="self-center pb-5 text-muted-foreground hover:text-foreground"><Link to={stepHref(5)} state={READ_TERMS}>Hopp over for nå</Link></Button>
+      <ActionStack className="pb-5" primary={<Button asChild><Link to={stepHref(5)} state={READ_TERMS}>Fortsett</Link></Button>} secondary={<Button asChild><Link to={stepHref(5)} state={READ_TERMS}>Hopp over for nå</Link></Button>} />
     </Screen>
   )
 }

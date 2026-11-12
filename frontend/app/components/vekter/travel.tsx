@@ -4,10 +4,10 @@ import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '~/components/ui/dialog'
 import type { InsuranceOffer } from '~/lib/travel-offer'
 import { cn } from '~/lib/utils'
+import { ActionStack } from './action-stack'
 import { DetailRow, StatusCheck } from './flow'
 
 const eyebrow = 'text-xs font-bold uppercase tracking-[0.14em] text-primary'
-const outlineAction = 'border-[#7f8bc0] bg-transparent'
 
 function ChatCard({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
   return <section aria-label={label} className={cn('mr-auto w-full max-w-[90%] rounded-xl bg-card p-4 text-sm leading-6 text-card-foreground', className)}>{children}</section>
@@ -33,7 +33,7 @@ export function TipCard({ title, body, remindInDays, reminderSet = false, onRemi
       <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#2b336f] text-primary"><Lightbulb className="size-4.5" /></span>
       <div><p className="font-bold">{title}</p><p className="text-[#d6ddee]">{body}</p></div>
     </div>
-    {period && <Button type="button" size="sm" variant="outline" disabled={disabled || reminderSet} onClick={onRemind} className={cn('mt-3 h-10 rounded-full px-4 disabled:opacity-100', outlineAction, reminderSet && 'text-primary')}>
+    {period && <Button type="button" size="sm" variant="outline" disabled={disabled || reminderSet} onClick={onRemind} className={cn('mt-3 h-10 rounded-full px-4 disabled:opacity-100', reminderSet && 'text-primary')}>
       {reminderSet ? <>Påminnelse satt <Check aria-hidden="true" /></> : <><Bell aria-hidden="true" /> Minn meg på om {period}</>}
     </Button>}
   </ChatCard>
@@ -50,7 +50,7 @@ export function OfferCard({ offer, onReview, onDecline, disabled, purchased = fa
     {purchased ? <p className="mt-3 flex items-center gap-2 font-bold text-primary"><Check aria-hidden="true" className="size-4" /> Godkjent og lagt til</p>
       : <div className="mt-3 flex flex-wrap gap-2">
         <Button type="button" size="sm" disabled={disabled} onClick={onReview} className="h-10 rounded-full px-4">Se og godkjenn</Button>
-        <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={onDecline} className={cn('h-10 rounded-full px-4', outlineAction)}>Nei takk</Button>
+        <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={onDecline} className="h-10 rounded-full px-4">Nei takk</Button>
       </div>}
   </ChatCard>
 }
@@ -72,10 +72,7 @@ export function ApproveOfferSheet({ offer, open, onOpenChange, onApprove, error 
       </dl>
       <p className="mt-2 flex items-start gap-2.5 rounded-xl bg-card p-3.5 text-sm leading-5.5 text-[#d6ddee]"><LockKeyhole aria-hidden="true" className="size-[18px] shrink-0 text-primary" />Ingenting skjer før du godkjenner. Du kan angre innen 14 dager.</p>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <div className="mt-2 flex flex-col gap-3">
-        <Button type="button" onClick={onApprove} className="h-12 w-full rounded-sm text-base font-bold">Godkjenn og betal</Button>
-        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className={cn('h-12 w-full rounded-sm text-base font-bold', outlineAction)}>Avbryt</Button>
-      </div>
+      <ActionStack className="mt-2" primary={<Button type="button" onClick={onApprove}>Godkjenn og betal</Button>} secondary={<Button type="button" onClick={() => onOpenChange(false)}>Avbryt</Button>} />
     </DialogContent>
   </Dialog>
 }

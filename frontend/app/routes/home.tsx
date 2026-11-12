@@ -4,7 +4,7 @@ import { ArrowRight, CarFront, Check, ChevronLeft, Heart, House, LockKeyhole, Pl
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
-import { AssistantMark, CoverageRing, CoverageRow, InsuranceRow } from '~/components/vekter'
+import { ActionStack, AssistantMark, CoverageRing, CoverageRow, InsuranceRow } from '~/components/vekter'
 import { applyMockAction, insuranceMonthlyPrice } from '~/lib/mock-actions'
 import { type InsuranceCategory, type MockInsurance } from '~/lib/mock-customer'
 import { saveMockState, useMockState } from '~/lib/use-mock-state'
@@ -17,7 +17,6 @@ const damageFlows: Record<string, CarDamageFlow> = { '/skade/meld': 'meld', '/sk
 const money = (value: number) => value.toLocaleString('nb-NO')
 const icons = { 'Hus og innbo': House, Bil: CarFront, Barneforsikring: Users, Reise: Plane, Livsforsikring: Heart, Uføreforsikring: ShieldCheck }
 const policyOrder: InsuranceCategory[] = ['Hus og innbo', 'Bil', 'Barneforsikring', 'Reise', 'Livsforsikring', 'Uføreforsikring']
-const actionClass = 'w-full rounded-sm text-base font-bold whitespace-normal lg:w-auto lg:self-center lg:px-6'
 
 function CoverageList({ title, items, excluded = false }: { title: string; items: string[]; excluded?: boolean }) {
   const Icon = excluded ? X : Check
@@ -66,6 +65,8 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
     }
   }
 
+  const askButton = <Button type="button" onClick={() => onAsk(question)}>Spør Vekter’n om {isCar ? 'bilforsikringen' : insurance.category === 'Reise' ? 'reisen' : 'forsikringen'}</Button>
+
   return <main className="policy-screen flex flex-col gap-3.5 px-6 pb-[max(30px,env(safe-area-inset-bottom))]">
     <div className="flex min-h-6 items-center justify-between">
       <Button asChild size="icon-sm" variant="ghost" className="-ml-2"><Link to="/" aria-label="Tilbake til hjem"><ChevronLeft className="size-6" /></Link></Button>
@@ -99,9 +100,9 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
     {notice && <div role="status" aria-live="polite" className="fixed right-4 bottom-[max(16px,env(safe-area-inset-bottom))] left-4 z-50 flex items-start gap-3 rounded-xl border border-primary/40 bg-card p-4 text-sm shadow-lg lg:left-auto lg:max-w-md"><Check aria-hidden="true" className="size-5 shrink-0 text-primary" /><p className="flex-1">{notice}</p><Button type="button" size="icon-sm" variant="ghost" aria-label="Lukk bekreftelsen" onClick={() => setNotice('')}><X className="size-4" /></Button></div>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {chatError && <p role="alert" className="text-sm text-destructive">{chatError}</p>}
-    {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede profilen.</p>}
-    {canEdit && <Button onClick={save} disabled={!dirty} className={actionClass}>Lagre endringer</Button>}
-    <Button type="button" onClick={() => onAsk(question)} variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}>Spør Vekter’n om {isCar ? 'bilforsikringen' : 'forsikringen'}</Button>
+    {canEdit
+      ? <ActionStack primary={<Button onClick={save} disabled={!dirty}>Lagre endringer</Button>} secondary={askButton} hint={dirty && 'Du har ulagrede endringer. Chatten bruker den sist lagrede profilen.'} />
+      : <ActionStack primary={askButton} />}
   </main>
 }
 
