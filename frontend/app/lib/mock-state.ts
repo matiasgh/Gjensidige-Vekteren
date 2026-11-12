@@ -1,5 +1,6 @@
 import { carDamageKinds, MAX_IMAGE_DATA_URL_LENGTH, type CarDamageKind } from './car-damage'
 import { createDefaultCustomer, isMockCustomer, type MockCustomer } from './mock-customer'
+import { insuranceMonthlyPrice } from './mock-actions'
 
 // `image` is a downscaled JPEG data URL kept only in the browser; `kind` marks
 // scripted flow messages so the chat can render their buttons. Both are optional,
@@ -78,11 +79,24 @@ export function isMockState(value: unknown): value is MockState {
   return state.version === 2 && isMockCustomer(state.customer) && hasValidConversations(state) && isOnboardingState(state.onboarding)
 }
 
-// Previous branches used different customer shapes. Keep valid conversations
-// and onboarding preferences, but replace incompatible policy data with the shared seed.
+// Enrich pre-toggle Kari profiles without dropping saved choices. Other incompatible
+// profiles still fall back to the shared seed, retaining conversations and onboarding.
 export function migrateLegacyState(value: unknown): MockState | null {
   if (!value || typeof value !== 'object') return null
-  const legacy = value as { version?: unknown; conversations: MockConversation[]; activeConversationId: string; onboarding?: unknown }
+  const legacy = value as { version?: unknown; customer?: MockCustomer; conversations: MockConversation[]; activeConversationId: string; onboarding?: unknown }
   if ((legacy.version !== 1 && legacy.version !== 2) || !hasValidConversations(legacy)) return null
-  return { ...createDefaultState(), conversations: legacy.conversations, activeConversationId: legacy.activeConversationId, onboarding: isOnboardingState(legacy.onboarding) ? legacy.onboarding : createDefaultOnboarding() }
+  const next = { ...createDefaultState(), conversations: legacy.conversations, activeConversationId: legacy.activeConversationId, onboarding: isOnboardingState(legacy.onboarding) ? legacy.onboarding : createDefaultOnboarding() }
+  if (legacy.version === 2 && Array.isArray(legacy.customer?.insurances)) {
+    const customer = structuredClone(legacy.customer)
+    customer.insurances = customer.insurances.map((insurance, index) => {
+      const seed = next.customer.insurances[index]
+      if (!insurance || typeof insurance !== 'object' || !seed?.coverages || insurance.coverages) return insurance
+      const upgraded = { ...insurance, coverages: seed.coverages, optionalCoverages: { ...seed.optionalCoverages, ...insurance.optionalCoverages } }
+      if (seed.coverageId === 'building') delete upgraded.note
+      upgraded.monthlyPriceNok = insuranceMonthlyPrice(upgraded)
+      return upgraded
+    })
+    if (isMockCustomer(customer)) next.customer = customer
+  }
+  return next
 }
