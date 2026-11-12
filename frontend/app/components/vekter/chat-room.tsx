@@ -315,7 +315,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
               <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center py-10 sm:py-14">
                 <div className="mx-auto max-w-xl text-center">
                   <AssistantMark className="mx-auto size-24 sm:size-28" />
-                  <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-primary">Vekter’n er på vakt</p>
+                  <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-primary">Vekter’n har våknet</p>
                   <h1 className="mt-4 font-display text-4xl leading-tight sm:text-5xl">Hei! Hva kan jeg hjelpe deg med?</h1>
                   <p className="mx-auto mt-4 max-w-md leading-7 text-muted-foreground">Spør meg om forsikringene dine, hva de dekker, eller hva du bør gjøre når noe skjer.</p>
                 </div>
