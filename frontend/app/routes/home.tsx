@@ -187,7 +187,10 @@ export default function Home() {
               if (!policies.length) return null
               const item = policies[0]
               const Icon = icons[category]
-              return <div key={category}><InsuranceRow icon={<Icon strokeWidth={1.5} />} title={category} provider={item.provider} price={item.employer ? undefined : `kr ${money(policies.reduce((sum, policy) => sum + policy.monthlyPriceNok, 0))}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />{policies.length > 1 && <div className="flex flex-wrap gap-4 py-2 pl-9">{policies.map((policy) => <Link key={policy.coverageId} id={`policy-${policy.coverageId}`} to={`/?insurance=${encodeURIComponent(policy.coverageId)}`} className={`text-sm underline underline-offset-4 ${policy.coverageId === highlighted ? 'rounded-sm font-bold text-primary ring-2 ring-primary ring-offset-4 ring-offset-background' : 'text-muted-foreground'}`}>{policy.displayName}{policy.coverageId === highlighted && <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground no-underline">Ny</span>}</Link>)}</div>}</div>
+              return <div key={category} className="border-b border-border/60">
+                <InsuranceRow className="border-b-0" icon={<Icon strokeWidth={1.5} />} title={category} provider={item.provider} price={item.employer ? undefined : `kr ${money(policies.reduce((sum, policy) => sum + policy.monthlyPriceNok, 0))}`} onClick={() => navigate(`/?insurance=${encodeURIComponent(item.coverageId)}`)} />
+                {policies.length > 1 && <div className="flex flex-wrap gap-4 pb-3 pl-[46px]">{policies.map((policy) => <Link key={policy.coverageId} id={`policy-${policy.coverageId}`} to={`/?insurance=${encodeURIComponent(policy.coverageId)}`} className={`text-sm underline underline-offset-4 ${policy.coverageId === highlighted ? 'rounded-sm font-bold text-primary ring-2 ring-primary ring-offset-4 ring-offset-background' : 'text-muted-foreground'}`}>{policy.displayName}{policy.coverageId === highlighted && <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground no-underline">Ny</span>}</Link>)}</div>}
+              </div>
             })}
           </nav>
         </div>
