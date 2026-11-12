@@ -387,7 +387,7 @@ function Done({ firstName, onFinish }: { firstName: string; onFinish: () => void
       <div className="flex flex-1 flex-col items-center justify-center gap-[18px] px-8 text-center">
         <AssistantMark className={cn('size-[150px]', fadeUp)} />
         <h1 className="font-display text-[40px] leading-[44px]">Alt er på plass, {firstName}.</h1>
-        <p className="text-foreground/85">Fra nå passer jeg på. Jeg sier fra når livet endrer seg, og du bestemmer alltid.</p>
+        <p className="text-foreground/85">Jeg gir beskjed hvis jeg ser noe du bør vite om.</p>
       </div>
       <div className="px-7 pb-11 lg:flex lg:justify-center">
         <StepLink to="/" onClick={onFinish}>Gå til oversikten</StepLink>
