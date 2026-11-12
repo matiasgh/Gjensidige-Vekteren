@@ -1,6 +1,7 @@
 import { carDamageKinds, MAX_IMAGE_DATA_URL_LENGTH, type CarDamageKind } from './car-damage'
 import { isAiBlockList, type AiBlock } from './chat-blocks'
 import { createDefaultCustomer, isMockCustomer, mockCustomer, type MockCustomer } from './mock-customer'
+import { insuranceMonthlyPrice } from './mock-actions'
 import { getOffer } from './travel-offer'
 
 export const OFFER_APPROVED_KIND = 'offer-approved'
@@ -120,27 +121,42 @@ export function isMockState(value: unknown): value is MockState {
 
 // v2 had the USA trip seed. Keep Kari's saved policy choices, but refresh the
 // trip, the gap analysis and the travel summary that the Thailand flow relies on.
-function refreshTripSeed(customer: unknown): MockCustomer | null {
-  if (!isMockCustomer(customer)) return null
-  return {
+function refreshTripSeed(customer: MockCustomer): MockCustomer | null {
+  const refreshed = {
     ...customer,
     plannedTrips: structuredClone(mockCustomer.plannedTrips),
     gapAnalysis: structuredClone(mockCustomer.gapAnalysis),
-    insurances: customer.insurances.map((insurance, index) => insurance.coverageId === 'travel-work' ? structuredClone(mockCustomer.insurances[index]) : insurance),
+    insurances: customer.insurances.map((insurance, index) => insurance?.coverageId === 'travel-work' ? structuredClone(mockCustomer.insurances[index]) : insurance),
   }
+  return isMockCustomer(refreshed) ? refreshed : null
 }
 
-// Previous versions used different shapes. Keep valid conversations and
-// onboarding preferences; v1 customers are replaced by the seed, v2 customers keep their choices.
+// Enrich pre-toggle Kari profiles and refresh the trip seed without dropping saved
+// choices. Other incompatible profiles fall back to the shared seed, retaining
+// conversations, onboarding and (from v3) reminders.
 export function migrateLegacyState(value: unknown): MockState | null {
   if (!value || typeof value !== 'object') return null
-  const legacy = value as { version?: unknown; customer?: unknown; conversations: MockConversation[]; activeConversationId: string; onboarding?: unknown }
-  if ((legacy.version !== 1 && legacy.version !== 2) || !hasValidConversations(legacy)) return null
-  return {
+  const legacy = value as { version?: unknown; customer?: MockCustomer; conversations: MockConversation[]; activeConversationId: string; onboarding?: unknown; reminders?: unknown }
+  if ((legacy.version !== 1 && legacy.version !== 2 && legacy.version !== 3) || !hasValidConversations(legacy)) return null
+  const next = {
     ...createDefaultState(),
-    customer: (legacy.version === 2 && refreshTripSeed(legacy.customer)) || createDefaultCustomer(),
     conversations: legacy.conversations,
     activeConversationId: legacy.activeConversationId,
     onboarding: isOnboardingState(legacy.onboarding) ? legacy.onboarding : createDefaultOnboarding(),
+    reminders: isReminderList(legacy.reminders) ? legacy.reminders : [],
   }
+  if (legacy.version !== 1 && Array.isArray(legacy.customer?.insurances)) {
+    const customer = structuredClone(legacy.customer)
+    customer.insurances = customer.insurances.map((insurance, index) => {
+      const seed = next.customer.insurances[index]
+      if (!insurance || typeof insurance !== 'object' || !seed?.coverages || insurance.coverages) return insurance
+      const upgraded = { ...insurance, coverages: seed.coverages, optionalCoverages: { ...seed.optionalCoverages, ...insurance.optionalCoverages } }
+      if (seed.coverageId === 'building') delete upgraded.note
+      upgraded.monthlyPriceNok = insuranceMonthlyPrice(upgraded)
+      return upgraded
+    })
+    const migrated = legacy.version === 2 ? refreshTripSeed(customer) : isMockCustomer(customer) ? customer : null
+    if (migrated) next.customer = migrated
+  }
+  return next
 }

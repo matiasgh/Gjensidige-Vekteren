@@ -1,12 +1,15 @@
-import { carMonthlyPrice } from './mock-actions'
+import { insuranceMonthlyPrice } from './mock-actions'
 import { insuranceOffers } from './travel-offer'
 export type InsuranceProvider = 'Gjensidige' | 'If' | 'Via jobb – Arnesen Bygg AS'
 export type InsuranceCategory = 'Hus og innbo' | 'Bil' | 'Reise' | 'Familie og barn' | 'Bedrift'
 
-// Third-party and business policies have no catalogue entry; this fictional summary is their only source.
+// Third-party and business policies have no catalogue entry; summaries describe the demo's initial choices.
 export type CoverageSummary = { basis: string; includes: string[]; excludes: string[] }
 
 export type OptionalCoverageDetail = { description: string; annualPremiumNok: number; claimsMade: number; overlap: string }
+
+// Fictitious prices and user-specific advice; a future service can supply tip per user.
+export type PolicyCoverage = { option: string; title: string; monthlyPriceNok: number; description?: string; required?: boolean; tip?: string }
 
 export type MockInsurance = {
   type: string
@@ -28,6 +31,7 @@ export type MockInsurance = {
   maxTripDays?: number
   registrationNumber?: string
   optionalCoverages?: Record<string, boolean>
+  coverages?: PolicyCoverage[]
   optionalCoverageDetails?: Record<string, OptionalCoverageDetail>
   insuredPeople?: string[]
   address?: string
@@ -85,8 +89,13 @@ export const mockCustomer: MockCustomer = {
       monthlyPriceNok: 250,
       includes: ['Brann-, vann- og naturskader på bygningen', 'Bekjempelse av mus og rotter', 'Ansvar og rettshjelp'],
       address: 'Furuvegen 14, 2318 Hamar',
-      optionalCoverages: { rotAndPestAddon: false },
-      note: 'Tillegget for råtesopp og skadeinsekter er ikke valgt',
+      optionalCoverages: { buildingDamage: true, rodents: true, liability: true, rotAndPestAddon: false },
+      coverages: [
+        { option: 'buildingDamage', title: 'Brann, vann og naturskader', monthlyPriceNok: 190, description: 'Skader på bygningen' },
+        { option: 'rodents', title: 'Bekjempelse av mus og rotter', monthlyPriceNok: 35 },
+        { option: 'liability', title: 'Ansvar og rettshjelp', monthlyPriceNok: 25 },
+        { option: 'rotAndPestAddon', title: 'Råtesopp og skadeinsekter', monthlyPriceNok: 55, tip: 'Huset er fra 1962, og råteskader er blant de dyreste skadene for hus på din alder – vurder å slå på dekningen.' },
+      ],
     },
     {
       type: 'Innboforsikring',
@@ -101,7 +110,15 @@ export const mockCustomer: MockCustomer = {
       address: 'Furuvegen 14, 2318 Hamar',
       insuredAmountNok: 1500000,
       deductibleNok: 3000,
-      optionalCoverages: { extendedMobileInsurance: false, increasedBicycleTheftLimit: false, pestControlAddon: true },
+      optionalCoverages: { contentsDamage: true, theftAndAccidents: true, liability: true, extendedMobileInsurance: false, increasedBicycleTheftLimit: false, pestControlAddon: true },
+      coverages: [
+        { option: 'contentsDamage', title: 'Brann og vannskader', monthlyPriceNok: 55, description: 'Skader på innbo' },
+        { option: 'theftAndAccidents', title: 'Tyveri og uhell', monthlyPriceNok: 40 },
+        { option: 'liability', title: 'Ansvar og rettshjelp', monthlyPriceNok: 20 },
+        { option: 'extendedMobileInsurance', title: 'Utvidet mobilforsikring', monthlyPriceNok: 25 },
+        { option: 'increasedBicycleTheftLimit', title: 'Økt grense for sykkeltyveri', monthlyPriceNok: 20 },
+        { option: 'pestControlAddon', title: 'Bekjempelse av mus og rotter', monthlyPriceNok: 45, tip: 'Du har aldri brukt tillegget, og huset dekker allerede mus og rotter – vurder å slå det av.' },
+      ],
       optionalCoverageDetails: {
         pestControlAddon: {
           description: 'Fiktivt demotillegg: bekjempelse av mus og rotter i boligen',
@@ -123,7 +140,15 @@ export const mockCustomer: MockCustomer = {
       vehicle: 'Volvo XC60',
       renewalDate: '1. mars',
       collisionDeductibleNok: 6000,
-      optionalCoverages: { partial: true, collision: true, roadside: true, rentalCar: false, puncture: false },
+      optionalCoverages: { liability: true, partial: true, collision: true, roadside: true, rentalCar: false, puncture: false },
+      coverages: [
+        { option: 'liability', title: 'Ansvar', monthlyPriceNok: 65, required: true },
+        { option: 'partial', title: 'Delkasko', monthlyPriceNok: 70 },
+        { option: 'collision', title: 'Kasko', monthlyPriceNok: 120 },
+        { option: 'roadside', title: 'Veihjelp', monthlyPriceNok: 35, tip: 'Du har ikke brukt veihjelp på 3 år, men den koster bare kr 35 i måneden – behold den.' },
+        { option: 'rentalCar', title: 'Leiebil', monthlyPriceNok: 45 },
+        { option: 'puncture', title: 'Punkteringsdekning', monthlyPriceNok: 20 },
+      ],
     },
     {
       type: 'Reiseforsikring',
@@ -152,6 +177,12 @@ export const mockCustomer: MockCustomer = {
       monthlyPriceNok: 120,
       includes: ['Økonomisk støtte ved alvorlig sykdom og ulykke', 'Uførepensjon etter avtalens vilkår', 'Helsehjelp for barna'],
       insuredPeople: ['Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
+      optionalCoverages: { illnessAndAccidents: true, disabilityPension: true, healthCare: true },
+      coverages: [
+        { option: 'illnessAndAccidents', title: 'Alvorlig sykdom og ulykke', monthlyPriceNok: 50, description: 'Økonomisk støtte til barna' },
+        { option: 'disabilityPension', title: 'Uførepensjon', monthlyPriceNok: 45, description: 'Etter avtalens vilkår' },
+        { option: 'healthCare', title: 'Helsehjelp', monthlyPriceNok: 25, description: 'Helsehjelp for barna' },
+      ],
     },
     {
       type: 'Bedriftsforsikring',
@@ -162,6 +193,13 @@ export const mockCustomer: MockCustomer = {
       coverageId: 'business',
       displayName: 'Bedrift',
       monthlyPriceNok: 80,
+      optionalCoverages: { customerLiability: true, equipment: true, legalAid: true, businessInterruption: false },
+      coverages: [
+        { option: 'customerLiability', title: 'Ansvar overfor kunder', monthlyPriceNok: 35 },
+        { option: 'equipment', title: 'Utstyr og varer', monthlyPriceNok: 30, description: 'På eget lager' },
+        { option: 'legalAid', title: 'Rettshjelp', monthlyPriceNok: 15, description: 'Ved tvist med kunder' },
+        { option: 'businessInterruption', title: 'Avbruddstap', monthlyPriceNok: 30 },
+      ],
       coverageSummary: {
         basis: fictionalSummary,
         includes: ['Ansvar overfor kunder', 'Utstyr og varer på eget lager', 'Rettshjelp ved tvist med kunder'],
@@ -202,6 +240,10 @@ export const optionLabels: Record<string, string> = {
   extendedMobileInsurance: 'Utvidet mobilforsikring',
   increasedBicycleTheftLimit: 'Økt grense for sykkeltyveri',
   pestControlAddon: 'Tillegg for bekjempelse av mus og rotter',
+  buildingDamage: 'Brann, vann og naturskader', rodents: 'Bekjempelse av mus og rotter', liability: 'Ansvar og rettshjelp',
+  contentsDamage: 'Brann og vannskader på innbo', theftAndAccidents: 'Tyveri og uhell',
+  illnessAndAccidents: 'Alvorlig sykdom og ulykke', disabilityPension: 'Uførepensjon', healthCare: 'Helsehjelp',
+  customerLiability: 'Ansvar overfor kunder', equipment: 'Utstyr og varer', legalAid: 'Rettshjelp', businessInterruption: 'Avbruddstap',
 }
 
 export const levelsFor = (coverageId: string | undefined) =>
@@ -221,8 +263,12 @@ function matchesShape(value: unknown, template: unknown): boolean {
   if (template !== null && typeof template === 'object') {
     if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
     const record = value as Record<string, unknown>
-    return Object.keys(record).length === Object.keys(template).length
-      && Object.entries(template).every(([key, item]) => Object.hasOwn(record, key) && matchesShape(record[key], item))
+    const isCoverage = Object.hasOwn(template, 'option') && Object.hasOwn(template, 'monthlyPriceNok')
+    const entries = Object.entries(template).filter(([key]) => !isCoverage || key !== 'tip')
+    const keys = Object.keys(record).filter((key) => !isCoverage || key !== 'tip')
+    return keys.length === entries.length
+      && (!isCoverage || record.tip === undefined || typeof record.tip === 'string')
+      && entries.every(([key, item]) => Object.hasOwn(record, key) && matchesShape(record[key], item))
   }
   return typeof value === typeof template && (typeof value !== 'number' || Number.isFinite(value))
 }
@@ -252,7 +298,16 @@ export function isMockCustomer(value: unknown): value is MockCustomer {
       const seed = mockCustomer.insurances[index]
       if (insurance.type !== seed.type || insurance.category !== seed.category || insurance.provider !== seed.provider) return false
       if (insurance.employer !== seed.employer || insurance.monthlyPriceNok < 0) return false
-      if (insurance.coverageId === 'car-kasko' && (insurance.monthlyPriceNok !== carMonthlyPrice(insurance.optionalCoverages!) || (insurance.optionalCoverages!.collision && !insurance.optionalCoverages!.partial))) return false
+      if (insurance.coverages) {
+        if (insurance.coverages.length !== seed.coverages?.length || insurance.coverages.some((coverage, index) => {
+          const expected = seed.coverages![index]
+          return coverage.option !== expected.option || coverage.title !== expected.title
+            || coverage.monthlyPriceNok !== expected.monthlyPriceNok || coverage.required !== expected.required
+        })) return false
+        if (insurance.monthlyPriceNok !== insuranceMonthlyPrice(insurance)) return false
+        if (insurance.coverages.some((coverage) => coverage.required && !insurance.optionalCoverages?.[coverage.option])) return false
+      }
+      if (insurance.coverageId === 'car-kasko' && insurance.optionalCoverages!.collision && !insurance.optionalCoverages!.partial) return false
       const levels = levelsFor(seed.coverageId) ?? (seed.coverageId === undefined ? undefined : { [seed.coverageId]: seed.coverage })
       if (!levels) return insurance.coverage === seed.coverage
       return insurance.coverageId !== undefined && Object.hasOwn(levels, insurance.coverageId) && insurance.coverage === levels[insurance.coverageId]
