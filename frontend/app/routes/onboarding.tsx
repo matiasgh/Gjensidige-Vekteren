@@ -115,7 +115,7 @@ const Progress = ({ step, className }: { step: number; className?: string }) => 
 const fadeUp = 'animate-in fade-in slide-in-from-bottom-2 duration-300'
 
 function StepLink({ to, variant = 'default', className, state, onClick, children }: { to: string; variant?: 'default' | 'outline'; className?: string; state?: unknown; onClick?: () => void; children: ReactNode }) {
-  return <Button asChild variant={variant} className={cn('w-full text-base font-bold', className)}><Link to={to} state={state} onClick={onClick}>{children}</Link></Button>
+  return <Button asChild variant={variant} className={cn('w-full text-base font-bold lg:w-auto lg:self-center lg:px-6', className)}><Link to={to} state={state} onClick={onClick}>{children}</Link></Button>
 }
 
 function Splash() {
@@ -381,7 +381,7 @@ function Done({ firstName, onFinish }: { firstName: string; onFinish: () => void
         <h1 className="font-display text-[40px] leading-[44px]">Alt er på plass, {firstName}.</h1>
         <p className="text-foreground/85">Fra nå passer jeg på. Jeg sier fra når livet endrer seg, og du bestemmer alltid.</p>
       </div>
-      <div className="px-7 pb-11">
+      <div className="px-7 pb-11 lg:flex lg:justify-center">
         <StepLink to="/" onClick={onFinish}>Gå til oversikten</StepLink>
       </div>
     </Screen>

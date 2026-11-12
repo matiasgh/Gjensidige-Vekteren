@@ -27,6 +27,6 @@ export function InsuranceRow({ icon, title, provider, price, trailing, onClick, 
   </>
   const classes = cn('flex min-h-18 w-full items-center gap-3 rounded-sm border-b border-border/60 py-3 text-left', className)
   return onClick
-    ? <button type="button" onClick={onClick} className={cn(classes, 'transition-colors hover:bg-accent/50')}>{content}</button>
+    ? <button type="button" onClick={onClick} className={cn(classes, 'px-3 transition-colors hover:bg-accent/50')}>{content}</button>
     : <div className={classes}>{content}</div>
 }

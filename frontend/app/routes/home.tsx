@@ -17,7 +17,7 @@ const damageFlows: Record<string, CarDamageFlow> = { '/skade/meld': 'meld', '/sk
 const money = (value: number) => value.toLocaleString('nb-NO')
 const icons = { 'Hus og innbo': House, Bil: CarFront, 'Familie og barn': Users, Reise: Plane, Bedrift: BriefcaseBusiness }
 const policyOrder: InsuranceCategory[] = ['Hus og innbo', 'Bil', 'Familie og barn', 'Reise', 'Bedrift']
-const actionClass = 'w-full rounded-sm text-base font-bold whitespace-normal'
+const actionClass = 'w-full rounded-sm text-base font-bold whitespace-normal lg:w-auto lg:self-center lg:px-6'
 
 function CoverageList({ title, items, excluded = false }: { title: string; items: string[]; excluded?: boolean }) {
   const Icon = excluded ? X : Check
@@ -33,7 +33,7 @@ function PolicyNote({ children, locked = false }: { children: ReactNode; locked?
   </div>
 }
 
-function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave: (options: Record<string, boolean>) => void }) {
+function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: MockInsurance; onSave: (options: Record<string, boolean>) => void; onAsk: (question: string) => void; chatError: string }) {
   const [options, setOptions] = useState({ ...insurance.optionalCoverages })
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -43,7 +43,6 @@ function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave
   const price = isCar ? carMonthlyPrice(options) : insurance.monthlyPriceNok
   const dirty = Object.keys(options).some((key) => options[key] !== insurance.optionalCoverages?.[key])
   const question = isCar ? 'Hva bør jeg vite om bilforsikringen min og tilvalgene mine?' : isWork ? 'Hva dekker reiseforsikringen min via jobb?' : `Hva dekker ${insurance.displayName.toLowerCase()}?`
-  const askUrl = `/chat?question=${encodeURIComponent(question)}`
 
   function save() {
     try {
@@ -83,9 +82,10 @@ function PolicyDetails({ insurance, onSave }: { insurance: MockInsurance; onSave
     <div className="min-h-4 flex-1" />
     {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    {chatError && <p role="alert" className="text-sm text-destructive">{chatError}</p>}
     {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede demoprofilen.</p>}
     {canEditCar && <Button onClick={save} className={actionClass}>Lagre endringer</Button>}
-    <Button asChild variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}><Link to={askUrl}>Spør Vekter’n om {isCar ? 'bilforsikringen' : isWork ? 'reisen' : 'forsikringen'}</Link></Button>
+    <Button type="button" onClick={() => onAsk(question)} variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}>Spør Vekter’n om {isCar ? 'bilforsikringen' : isWork ? 'reisen' : 'forsikringen'}</Button>
     {isWork && <Button asChild variant="outline" className={`${actionClass} border-[#7f8bc0] bg-transparent`}><Link to={`/chat?question=${encodeURIComponent('Hvilken ekstra reiseforsikring kan jeg vurdere for familien, siden jobbens avtale bare dekker meg?')}`}>Se ekstra dekning for familien</Link></Button>}
   </main>
 }
@@ -116,7 +116,7 @@ export default function Home() {
     setState({ ...state, customer: updated })
   }
 
-  function startChat() {
+  function startChat(question = message) {
     if (!state) return
     const conversation = createConversation()
     const next = { ...state, conversations: [...state.conversations, conversation], activeConversationId: conversation.id }
@@ -128,7 +128,7 @@ export default function Home() {
     setChatError('')
     setState(next)
     const query = new URLSearchParams({ conversation: conversation.id })
-    if (message.trim()) query.set('question', message.trim())
+    if (question.trim()) query.set('question', question.trim())
     setMessage('')
     navigate(`/chat?${query}`)
   }
@@ -172,7 +172,7 @@ export default function Home() {
       </>}
     </aside>
     <div className={`${insurance || isChat ? 'block' : 'hidden'} min-w-0 flex-1 lg:block lg:h-dvh lg:overflow-y-auto`}>
-      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCar} /></div> : damageFlow ? <CarDamageScreen key={location.pathname} flow={damageFlow} state={state} setState={setState} /> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
+      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCar} onAsk={startChat} chatError={chatError} /></div> : damageFlow ? <CarDamageScreen key={location.pathname} flow={damageFlow} state={state} setState={setState} /> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
     </div>
   </div>
 }

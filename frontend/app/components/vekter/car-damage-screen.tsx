@@ -11,7 +11,7 @@ export type CarDamageFlow = 'meld' | 'verksted' | 'berging'
 type Finish = (content: string, kind?: CarDamageKind) => void
 type ScreenProps = { coverage: CarCoverage | null; finish: Finish; error: string }
 
-const actionClass = 'h-[52px] w-full rounded-sm text-base font-bold! whitespace-normal'
+const actionClass = 'h-[52px] w-full rounded-sm text-base font-bold! whitespace-normal lg:w-auto lg:self-center lg:px-6'
 const outlineClass = `${actionClass} border-[#7f8bc0] bg-transparent`
 
 function ErrorText({ error }: { error: string }) {
