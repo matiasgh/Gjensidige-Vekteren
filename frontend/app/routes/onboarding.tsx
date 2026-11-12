@@ -19,7 +19,7 @@ const sourceOrder: SourceKind[] = ['gjensidige', 'employer', 'other']
 
 export const meta: Route.MetaFunction = () => [{ title: "Kom i gang – Vekter'n" }]
 
-function deriveOnboarding({ firstName, insurances, gapAnalysis }: MockCustomer) {
+function deriveOnboarding({ firstName, insurances }: MockCustomer) {
 
   // Policies are counted per category, matching the grouped list in step 5 (house + contents = one).
   const categoriesOf = (list: typeof insurances) => [...new Set(list.map((i) => i.category))]
@@ -42,7 +42,7 @@ function deriveOnboarding({ firstName, insurances, gapAnalysis }: MockCustomer) 
     return { category, provider }
   })
 
-  return { firstName, sources, policies, gapAnalysis }
+  return { firstName, sources, policies }
 }
 
 type OnboardingData = ReturnType<typeof deriveOnboarding>
@@ -71,7 +71,7 @@ function OnboardingStep({ step, state, setState }: { step: number; state: MockSt
     case 3: return <Priorities saved={state.onboarding.priorities} onChange={(priorities) => setState((current) => current && ({ ...current, onboarding: { ...current.onboarding, priorities } }))} />
     case 4: return <ExistingInsurance sources={data.sources} />
     case 5: return <ReadingTerms policies={data.policies} />
-    case 6: return <GapAnalysis gaps={data.gapAnalysis} />
+    case 6: return <Tips />
     default: return <Done firstName={data.firstName} onFinish={() => {
       const next: MockState = { ...state, onboarding: { ...state.onboarding, completed: true } }
       saveMockState(next)
@@ -323,7 +323,7 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
         ))}
       </div>
       <div className="flex-1" />
-      <p className="text-center text-sm font-medium text-muted-foreground">Jeg sammenligner med skadedata for hus på din alder og din del av landet.</p>
+      <p className="text-center text-sm font-medium text-muted-foreground">Jeg ser etter ting som er lurt å vite for deg.</p>
       {finished
         ? <StepLink to={stepHref(6)}>Neste</StepLink>
         : <Button disabled className="w-full text-base font-bold lg:w-auto lg:self-center lg:px-6">Neste</Button>}
@@ -331,23 +331,42 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
   )
 }
 
-function GapAnalysis({ gaps }: { gaps: OnboardingData['gapAnalysis'] }) {
+// Step 6 follows a full coverage ring, so it gives general advice instead of gaps.
+const tips = [
+  {
+    title: 'Husk å finne stoppekranen',
+    text: 'Da stopper du en vannlekkasje raskere. Kranen under kjøkkenbenken stenger ofte bare oppvaskmaskinen.',
+    href: 'https://www.gjensidige.no/godtforberedt/bolig-eiendom/vet-du-hvor-stoppekranen-er',
+  },
+  {
+    title: 'Husk å stenge utekranen før frosten',
+    text: 'En frostskade koster i snitt over 100 000 kroner.',
+    href: 'https://www.gjensidige.no/godtforberedt/bolig-eiendom/husk-a-stenge-utekranen-for-frosten-kommer',
+  },
+  {
+    title: 'Husk reiseforsikring utenfor EU/EØS',
+    text: 'Helsetrygdkortet gjelder ikke i for eksempel Thailand, og kredittkortets reiseforsikring har begrensninger.',
+    href: 'https://www.gjensidige.no/godtforberedt/ferie-reise/kredittkortets-reiseforsikring',
+  },
+]
+
+function Tips() {
   return (
     <Screen className="gap-2.5 px-6 pt-5 pb-4">
       <Progress step={6} />
-      <h1 className="font-display text-[30px] leading-8">Du er nesten riktig dekket.</h1>
-      <p className="text-sm font-medium text-muted-foreground">Tre ting jeg la merke til, og hvorfor.</p>
+      <h1 className="font-display text-[30px] leading-8">Du er godt dekket.</h1>
+      <p className="text-sm font-medium text-muted-foreground">Tre ting som er lurt å huske.</p>
       <ol className="flex flex-col">
-        {gaps.map(({ title, reason, actionLabel }, i) => (
+        {tips.map(({ title, text, href }, i) => (
           <li key={title}>
             <div className="flex items-start gap-3.5 py-2.5">
               <span className="w-5 shrink-0 font-display text-[26px] leading-none text-primary">{i + 1}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="leading-snug font-bold">{title}</p>
-                <p className="text-[13px] leading-[18px] font-medium text-muted-foreground">{reason}</p>
-                <span className="flex items-center gap-1.5 pt-0.5 text-sm font-medium text-primary">
-                  {actionLabel} <ArrowRight size={16} strokeWidth={2} aria-hidden />
-                </span>
+                <p className="text-[13px] leading-[18px] font-medium text-muted-foreground">{text}</p>
+                <a href={href} target="_blank" rel="noopener noreferrer" className="flex w-fit items-center gap-1.5 pt-0.5 text-sm font-medium text-primary underline-offset-4 hover:underline">
+                  Les mer hos Gjensidige<span className="sr-only"> (åpnes i ny fane)</span> <ArrowRight size={16} strokeWidth={2} aria-hidden />
+                </a>
               </div>
             </div>
             <Separator className="bg-border/60" />
@@ -355,11 +374,7 @@ function GapAnalysis({ gaps }: { gaps: OnboardingData['gapAnalysis'] }) {
         ))}
       </ol>
       <div className="flex-1" />
-      <div className="flex flex-col gap-2">
-        <StepLink to={stepHref(7)} className="h-12">Gå gjennom forslagene</StepLink>
-        <StepLink to={stepHref(7)} variant="outline" className="h-12">Ikke nå</StepLink>
-      </div>
-      <p className="text-center text-[13px] font-medium text-muted-foreground">Ingenting skjer før du sier ja.</p>
+      <StepLink to={stepHref(7)} className="h-12">Neste</StepLink>
     </Screen>
   )
 }

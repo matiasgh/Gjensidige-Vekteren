@@ -82,7 +82,7 @@ export function toApiMessages(messages: ChatMessage[], firstName: string): ApiCh
   return messages.map(({ role, content, image, blocks, receipt }) => {
     if (image) return { role, content: `[${firstName} sendte et bilde av skaden]` }
     const offer = receipt && getOffer(receipt.offerId)
-    if (receipt && offer) return { role, content: `[${firstName} godkjente ${offer.title}. Appen viste kvitteringen: ${offer.title} er lagt til i demoprofilen, ${receiptLines(receipt).join(', ').toLowerCase()}.]` }
+    if (receipt && offer) return { role, content: `[${firstName} godkjente ${offer.title}. Appen viste kvitteringen: ${offer.title} er lagt til i profilen, ${receiptLines(receipt).join(', ').toLowerCase()}.]` }
     // The server replays cards as reply_with_blocks tool calls, so the model keeps using the tool.
     return blocks ? { role, content, blocks } : { role, content }
   })
@@ -120,20 +120,19 @@ export function isMockState(value: unknown): value is MockState {
 }
 
 // v2 had the USA trip seed. Keep Kari's saved policy choices, but refresh the
-// trip, the gap analysis and the travel summary that the Thailand flow relies on.
+// trip and the travel summary that the Thailand flow relies on.
 function refreshTripSeed(customer: MockCustomer): MockCustomer | null {
   const refreshed = {
     ...customer,
     plannedTrips: structuredClone(mockCustomer.plannedTrips),
-    gapAnalysis: structuredClone(mockCustomer.gapAnalysis),
     insurances: customer.insurances.map((insurance, index) => insurance?.coverageId === 'travel-work' ? structuredClone(mockCustomer.insurances[index]) : insurance),
   }
   return isMockCustomer(refreshed) ? refreshed : null
 }
 
-// Enrich pre-toggle Kari profiles and refresh the trip seed without dropping saved
-// choices. Other incompatible profiles fall back to the shared seed, retaining
-// conversations, onboarding and (from v3) reminders.
+// Enrich pre-toggle Kari profiles, drop the retired gap analysis and refresh the
+// trip seed without dropping saved choices. Other incompatible profiles fall back
+// to the shared seed, retaining conversations, onboarding and (from v3) reminders.
 export function migrateLegacyState(value: unknown): MockState | null {
   if (!value || typeof value !== 'object') return null
   const legacy = value as { version?: unknown; customer?: MockCustomer; conversations: MockConversation[]; activeConversationId: string; onboarding?: unknown; reminders?: unknown }
@@ -147,6 +146,8 @@ export function migrateLegacyState(value: unknown): MockState | null {
   }
   if (legacy.version !== 1 && Array.isArray(legacy.customer?.insurances)) {
     const customer = structuredClone(legacy.customer)
+    // Older profiles stored a hardcoded gap analysis; the strict shape check would reject it.
+    delete (customer as Partial<Record<'gapAnalysis', unknown>>).gapAnalysis
     customer.insurances = customer.insurances.map((insurance, index) => {
       const seed = next.customer.insurances[index]
       if (!insurance || typeof insurance !== 'object' || !seed?.coverages || insurance.coverages) return insurance

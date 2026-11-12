@@ -42,7 +42,6 @@ export const insuranceOffers: Record<string, InsuranceOffer> = {
       oneTimePriceNok: 389,
       insuredPeople: ['Kari Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
       includes: ['Sykdom og akutt hjelp, for hele familien', 'Ulykke', 'Aktiviteter som dykking og scooter', 'Avbestilling'],
-      note: 'Fiktiv engangsforsikring for demo, kjøpt i chatten. Ikke en reell avtale.',
     },
   },
 }

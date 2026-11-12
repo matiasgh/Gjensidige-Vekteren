@@ -50,7 +50,7 @@ export function AttachSheet({ open, onOpenChange, onImage }: { open: boolean; on
         <SheetOption icon={<Camera />} title="Ta bilde" description="Åpne kamera" disabled={busy} onClick={() => camera.current?.click()} />
         <SheetOption icon={<ImageIcon />} title="Velg fra bilder" description="Fra biblioteket" disabled={busy} onClick={() => library.current?.click()} />
         <SheetOption icon={<FileText />} title="Velg fil" description="Fra Filer, for eksempel skademelding" disabled={busy} onClick={() => files.current?.click()} />
-        <SheetOption icon={<Sparkles />} title="Bruk eksempelbilde" description="Bulk i bildøren, for demo" disabled={busy} onClick={() => void use(EXAMPLE_DAMAGE_IMAGE)} />
+        <SheetOption icon={<Sparkles />} title="Bruk eksempelbilde" description="Bulk i bildøren" disabled={busy} onClick={() => void use(EXAMPLE_DAMAGE_IMAGE)} />
       </div>
       {busy && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> Gjør klar bildet …</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

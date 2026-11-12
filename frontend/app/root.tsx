@@ -5,7 +5,7 @@ import './app.css'
 
 export const meta: Route.MetaFunction = () => [
   { title: 'Vekter’n – Gjensidige' },
-  { name: 'description', content: 'Vekteren – en AI-assistent for Gjensidige-hackathonet.' },
+  { name: 'description', content: 'Vekteren – din digitale forsikringsassistent.' },
   { name: 'theme-color', content: '#0c0e35' },
 ]
 

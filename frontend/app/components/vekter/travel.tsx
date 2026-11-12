@@ -61,7 +61,7 @@ export function ApproveOfferSheet({ offer, open, onOpenChange, onApprove, error 
     <DialogContent className="vekter-theme top-auto bottom-0 max-w-none translate-y-0 gap-2 rounded-t-3xl rounded-b-none border-x-0 border-b-0 bg-[#1a1f5c] px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:max-w-md sm:bottom-6 sm:rounded-3xl sm:border-x sm:border-b">
       <span aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded-full bg-muted-foreground/50" />
       <DialogTitle className="font-display text-xl">Godkjenn tilleggsdekning</DialogTitle>
-      <DialogDescription className="sr-only">Se over forslaget før du godkjenner. Dette er en demo; ingen reell forsikring kjøpes.</DialogDescription>
+      <DialogDescription className="sr-only">Se over forslaget før du godkjenner.</DialogDescription>
       <dl className="mt-1">
         <DetailRow label="Produkt" value={`${offer.product}, ${offer.destination}`} />
         <DetailRow label="Hvem" value={offer.who} />
@@ -76,7 +76,6 @@ export function ApproveOfferSheet({ offer, open, onOpenChange, onApprove, error 
         <Button type="button" onClick={onApprove} className="h-12 w-full rounded-sm text-base font-bold">Godkjenn og betal</Button>
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className={cn('h-12 w-full rounded-sm text-base font-bold', outlineAction)}>Avbryt</Button>
       </div>
-      <p className="text-xs leading-5 text-muted-foreground">Demo: forsikringen legges bare til i den lokale demoprofilen. Ingen betaling eller avtale skjer.</p>
     </DialogContent>
   </Dialog>
 }
