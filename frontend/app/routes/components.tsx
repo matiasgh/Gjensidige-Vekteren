@@ -8,8 +8,9 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from '~/components/ui/input'
 import { Separator } from '~/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { AdvisorNote, ApprovedBadge, AssistantIdentity, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, CoverageRing, CoverageRow, DetailRow, InsuranceRow, QuickReplies, StaticMap, StatusCheck, StepProgress } from '~/components/vekter'
+import { AdvisorNote, ApprovedBadge, ApproveOfferSheet, AssistantIdentity, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, CoverageCheck, CoverageRing, CoverageRow, DetailRow, InsuranceRow, OfferCard, QuickReplies, ReceiptCard, StaticMap, StatusCheck, StepProgress, TipCard } from '~/components/vekter'
 import { EXAMPLE_DAMAGE_IMAGE } from '~/lib/image'
+import { insuranceOffers } from '~/lib/travel-offer'
 
 export const meta = () => [{ title: 'Komponentbibliotek · Vekter’n' }]
 
@@ -62,6 +63,21 @@ function FlowPartsExample() {
   </div>
 }
 
+function TravelFlowExample() {
+  const offer = insuranceOffers.familyTravelThailand
+  const [reminder, setReminder] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [approved, setApproved] = useState(false)
+  return <div className="space-y-4">
+    <ChatBubble role="assistant">Delvis. Jobbens reiseforsikring dekker deg, men ikke barna.</ChatBubble>
+    <CoverageCheck title="Reise via jobb" items={[{ label: 'Sykdom og akutt hjelp, for deg', covered: true }, { label: 'Bagasje og forsinkelse', covered: true }, { label: 'Barna er ikke med', covered: false }, { label: 'Aktiviteter som dykking og scooter', covered: false }]} />
+    <TipCard title="Husk reisevaksine" body="Thailand krever ofte vaksiner. Bestill time i god tid før avreise." remindInDays={14} reminderSet={reminder} onRemind={() => setReminder(true)} />
+    <OfferCard offer={offer} purchased={approved} onReview={() => setSheetOpen(true)} onDecline={() => undefined} />
+    <ApproveOfferSheet offer={offer} open={sheetOpen} onOpenChange={setSheetOpen} onApprove={() => { setApproved(true); setSheetOpen(false) }} />
+    {approved && <ReceiptCard title={`Ferdig. Familien er dekket fra ${offer.startLabel}.`} lines={['Kvittering sendt på e-post', 'Oversikten din er oppdatert', ...(reminder ? ['Påminnelse om vaksine er satt'] : [])]} />}
+  </div>
+}
+
 export default function Components() {
   const [step, setStep] = useState(2)
   const [selected, setSelected] = useState('')
@@ -77,6 +93,7 @@ export default function Components() {
           <Specimen title="Dekningsring" description="Tilgjengelig prosentvis status, som én bue eller segmentert per forsikring."><CoverageRing value={100} className="mx-auto" /><CoverageRing value={60} segments={5} className="mx-auto" /><p className="text-center text-2xl font-bold">100 % dekket</p><p className="text-center text-sm text-muted-foreground">Eksempeldata · 5 forsikringer</p></Specimen>
           <Specimen title="Samtale" description="Meldinger og sendefelt med Enter / Shift+Enter."><ChatExample /></Specimen>
           <Specimen title="Skadeflyt i chat" description="Hurtigsvar, bildeboble og «Legg ved»-ark. Bildet nedskaleres og blir i nettleseren."><DamageFlowExample /></Specimen>
+          <Specimen title="Reise i chat" description="Dekningssjekk, tips med påminnelse, forslag som krever ja, godkjenningsark og kvittering. Eksempelet endrer ingen demodata."><TravelFlowExample /></Specimen>
           <Specimen title="Flytskjermer" description="Redigerbar detaljrad, statisk kart, godkjent-merke og statuslinjer fra skademelding, verksted og berging."><FlowPartsExample /></Specimen>
         </TabsContent>
         <TabsContent value="patterns"><div className="grid items-start gap-8 md:grid-cols-2"><InsuranceExample /><Specimen title="Assistent i samtalen" description="Mønster med identitet, meldinger, råd og skrivefelt."><ChatExample /></Specimen></div></TabsContent>

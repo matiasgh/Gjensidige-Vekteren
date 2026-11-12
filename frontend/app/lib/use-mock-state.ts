@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
-import { createDefaultState, isMockState, LEGACY_MOCK_STORAGE_KEY, migrateLegacyState, MOCK_STORAGE_KEY, type MockState } from './mock-state'
+import { createDefaultState, isMockState, LEGACY_MOCK_STORAGE_KEYS, migrateLegacyState, MOCK_STORAGE_KEY, type MockState } from './mock-state'
 
 // Writes synchronously, for updates made right before navigating away
 // (the hook's effect would not run after the component unmounts).
 export function saveMockState(state: MockState): boolean {
   try {
     localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(state))
-    // Drop v1 data only once v2 is safely stored.
-    localStorage.removeItem(LEGACY_MOCK_STORAGE_KEY)
+    // Drop older data only once v3 is safely stored.
+    for (const key of LEGACY_MOCK_STORAGE_KEYS) localStorage.removeItem(key)
     return true
   } catch {
     return false
@@ -22,7 +22,7 @@ export function useMockState() {
     let initial = createDefaultState()
     try {
       const stored = localStorage.getItem(MOCK_STORAGE_KEY)
-      const legacy = stored ? null : localStorage.getItem(LEGACY_MOCK_STORAGE_KEY)
+      const legacy = stored ? null : LEGACY_MOCK_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find((item) => item !== null)
       if (stored) {
         const parsed: unknown = JSON.parse(stored)
         if (isMockState(parsed)) initial = parsed
