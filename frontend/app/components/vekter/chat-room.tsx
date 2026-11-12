@@ -219,7 +219,9 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
     if (!state || !initialQuestion.current) return
     const question = initialQuestion.current
     initialQuestion.current = null
-    send(question)
+    // The URL seeds a new chat, but must never replay a saved conversation.
+    // An unanswered saved message can still be retried with "Hent svar".
+    if (activeConversation?.messages.length === 0) send(question)
   }, [state])
 
   function newConversation() {
