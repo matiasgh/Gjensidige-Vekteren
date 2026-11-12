@@ -36,7 +36,6 @@ Et produkt i katalogen er ikke en aktiv forsikring med mindre coverageId finnes 
 Bruk coverageId til å koble kundens avtale med riktig dekning i katalogen.
 Hver avtale har provider som angir hvem som leverer den (Gjensidige, If eller via jobb hos Arnesen Bygg AS).
 For avtaler med coverageSummary, for eksempel hos If, via jobb eller bedriftsforsikringen, er provider og coverageSummary kilden til de forenklede vilkårene. coverageId er her bare en stabil demoidentifikator. Ikke bruk Gjensidige-katalogen til å beskrive slike avtaler, og ikke finn på vilkår utover coverageSummary. Valgte prototypebrytere overstyrer sammendraget ved endringer.
-gapAnalysis er din tidligere vurdering av kundens forsikringer, vist til kunden under oppstarten. Vær konsistent med den, men den er ikke en bindende dekningsvurdering.
 Kundens avtale angir hvem og hva som er forsikret, egenandel, forsikringssum og reisevarighet der dette er oppgitt.
 Skill tydelig mellom eksisterende dekning og forslag til ny forsikring.
 Vurder relevante dekninger, unntak og samspill mellom forsikringer før du svarer.
