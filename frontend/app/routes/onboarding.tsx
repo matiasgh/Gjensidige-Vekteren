@@ -5,12 +5,13 @@ import type { Route } from './+types/onboarding'
 import type { MockCustomer } from '~/lib/mock-customer'
 import { MAX_PRIORITIES, MAX_PRIORITY_LENGTH, type MockState } from '~/lib/mock-state'
 import { lowerFirst, priorityLabels, tipsFor } from '~/lib/priority-options'
+import { applyMockAction, coverageLevelSurchargeNok } from '~/lib/mock-actions'
 import { saveMockState, useMockState } from '~/lib/use-mock-state'
 import { cn } from '~/lib/utils'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
-import { ActionStack, AdvisorNote, AssistantIdentity, AssistantMark, ChatBubble, ChatComposer, CoverageRing, InsuranceRow, StepProgress } from '~/components/vekter'
+import { ActionStack, AdvisorNote, AssistantIdentity, AssistantMark, ChatBubble, ChatComposer, CoverageRing, InsuranceRow, StepProgress, UpgradeProposal } from '~/components/vekter'
 
 const STEP_COUNT = 7
 const TICK_MS = 600
@@ -72,7 +73,7 @@ function OnboardingStep({ step, state, setState }: { step: number; state: MockSt
     case 3: return <Priorities saved={state.onboarding.priorities} onChange={(priorities) => setState((current) => current && ({ ...current, onboarding: { ...current.onboarding, priorities } }))} />
     case 4: return <ExistingInsurance sources={data.sources} />
     case 5: return <ReadingTerms policies={data.policies} />
-    case 6: return <Tips priorities={state.onboarding.priorities} />
+    case 6: return <Tips state={state} setState={setState} />
     default: return <Done firstName={data.firstName} onFinish={() => {
       const next: MockState = { ...state, onboarding: { ...state.onboarding, completed: true } }
       saveMockState(next)
@@ -338,13 +339,30 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
 
 // Step 6 follows a full coverage ring, so it gives advice instead of gaps:
 // tips for what the customer chose in step 3, topped up with general ones.
-function Tips({ priorities }: { priorities: string[] }) {
-  const tips = tipsFor(priorities)
+function Tips({ state, setState }: { state: MockState; setState: ReturnType<typeof useMockState>['setState'] }) {
+  const tips = tipsFor(state.onboarding.priorities)
+  const [accepted, setAccepted] = useState(false)
+  const building = state.customer.insurances.find(({ coverageId }) => coverageId === 'building' || coverageId === 'building-plus')
+  const showUpgrade = building && (building.coverageId === 'building' || accepted)
+  const newPrice = building && (accepted ? building.monthlyPriceNok : applyMockAction(state.customer, { type: 'set-coverage-level', coverageId: 'building', targetCoverageId: 'building-plus' }).insurances.find(({ displayName }) => displayName === building.displayName)!.monthlyPriceNok)
+  function accept() {
+    const next: MockState = { ...state, customer: applyMockAction(state.customer, { type: 'set-coverage-level', coverageId: 'building', targetCoverageId: 'building-plus' }) }
+    saveMockState(next)
+    setState(next)
+    setAccepted(true)
+  }
   return (
     <Screen className="gap-2.5 px-6 pt-5 pb-4">
       <Progress step={6} />
       <h1 className="font-display text-[30px] leading-8">Du er godt dekket.</h1>
       <p className="text-sm font-medium text-muted-foreground">Tre ting som er lurt å huske.</p>
+      {showUpgrade && newPrice !== undefined && (
+        <UpgradeProposal
+          from="Hus" to="Hus Pluss" upgraded={accepted} onAccept={accept}
+          currentPriceNok={accepted ? newPrice - coverageLevelSurchargeNok['building-plus'] : building.monthlyPriceNok} newPriceNok={newPrice}
+          reason={`Huset ditt er fra ${state.customer.home.builtYear}. Hus Pluss dekker også råtesopp, skadeinsekter, våtrom og følgeskader etter lekkasje – skader som er vanligere og dyrere i eldre hus.`}
+        />
+      )}
       <ol className="flex flex-col">
         {tips.map(({ title, text, href, reason }, i) => (
           <li key={href}>

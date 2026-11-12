@@ -32,6 +32,7 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
       }
       insurance.coverageId = action.targetCoverageId
       insurance.coverage = levels[action.targetCoverageId]
+      insurance.monthlyPriceNok = insuranceMonthlyPrice(insurance)
       break
     }
     case 'set-coverage-option':
@@ -59,9 +60,12 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
   return next
 }
 
+// Fictitious monthly surcharge for coverage levels above the seed level.
+export const coverageLevelSurchargeNok: Record<string, number> = { 'building-plus': 90 }
+
 export function insuranceMonthlyPrice(insurance: MockInsurance, options = insurance.optionalCoverages ?? {}) {
   return insurance.coverages
-    ? insurance.coverages.reduce((sum, coverage) => sum + (coverage.required || options[coverage.option] ? coverage.monthlyPriceNok : 0), 0)
+    ? insurance.coverages.reduce((sum, coverage) => sum + (coverage.required || options[coverage.option] ? coverage.monthlyPriceNok : 0), 0) + (coverageLevelSurchargeNok[insurance.coverageId ?? ''] ?? 0)
     : insurance.monthlyPriceNok
 }
 
