@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router'
 import { ArrowRight, Bell, Briefcase, CarFront, Check, Circle, Eye, Hand, House, Plus } from 'lucide-react'
 import type { Route } from './+types/onboarding'
 import type { MockCustomer } from '~/lib/mock-customer'
@@ -286,32 +286,25 @@ function ExistingInsurance({ sources }: { sources: OnboardingData['sources'] }) 
 }
 
 const READ_TERMS = { readTerms: true }
-const REDUCED_MOTION_HOLD_MS = 1000
 
-// Step 5 is a loading step: it moves on to step 6 by itself, but only when
-// the user just arrived from step 4. Back/refresh/deep links show the result.
+// Step 5 animates reading the policies only when the user just arrived from
+// step 4; back/refresh/deep links show the result. "Neste" unlocks when done.
 function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
-  const navigate = useNavigate()
   const navigationType = useNavigationType()
   const location = useLocation()
-  const autoAdvance = navigationType === 'PUSH' && (location.state as typeof READ_TERMS | null)?.readTerms === true
-  const [done, setDone] = useState(autoAdvance ? 0 : policies.length)
+  const animate = navigationType === 'PUSH' && (location.state as typeof READ_TERMS | null)?.readTerms === true
+  const [done, setDone] = useState(animate ? 0 : policies.length)
   const finished = done >= policies.length
 
   useEffect(() => {
-    if (!autoAdvance) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (finished) {
-      const timer = setTimeout(() => navigate(stepHref(6)), reduced ? REDUCED_MOTION_HOLD_MS : TICK_MS + 300)
-      return () => clearTimeout(timer)
-    }
-    if (reduced) {
+    if (!animate || finished) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setDone(policies.length)
       return
     }
     const timer = setTimeout(() => setDone((d) => d + 1), TICK_MS)
     return () => clearTimeout(timer)
-  }, [autoAdvance, done, finished, policies.length, navigate])
+  }, [animate, done, finished, policies.length])
 
   return (
     <Screen className="items-center gap-3 px-7 pt-6 pb-5">
@@ -333,9 +326,9 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
       </div>
       <div className="flex-1" />
       <p className="text-center text-sm font-medium text-muted-foreground">Jeg sammenligner med skadedata for hus på din alder og din del av landet.</p>
-      {!autoAdvance && (
-        <Button asChild variant="link" className="pb-1 text-muted-foreground hover:text-foreground"><Link to={stepHref(6)}>Se hva jeg fant</Link></Button>
-      )}
+      {finished
+        ? <StepLink to={stepHref(6)}>Neste</StepLink>
+        : <Button disabled className="w-full text-base font-bold lg:w-auto lg:self-center lg:px-6">Neste</Button>}
     </Screen>
   )
 }
