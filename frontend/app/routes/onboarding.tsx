@@ -4,6 +4,7 @@ import { ArrowRight, Bell, Briefcase, CarFront, Check, Circle, Eye, Hand, House,
 import type { Route } from './+types/onboarding'
 import type { MockCustomer } from '~/lib/mock-customer'
 import { MAX_PRIORITIES, MAX_PRIORITY_LENGTH, type MockState } from '~/lib/mock-state'
+import { lowerFirst, priorityLabels, tipsFor } from '~/lib/priority-options'
 import { saveMockState, useMockState } from '~/lib/use-mock-state'
 import { cn } from '~/lib/utils'
 import { Badge } from '~/components/ui/badge'
@@ -71,7 +72,7 @@ function OnboardingStep({ step, state, setState }: { step: number; state: MockSt
     case 3: return <Priorities saved={state.onboarding.priorities} onChange={(priorities) => setState((current) => current && ({ ...current, onboarding: { ...current.onboarding, priorities } }))} />
     case 4: return <ExistingInsurance sources={data.sources} />
     case 5: return <ReadingTerms policies={data.policies} />
-    case 6: return <Tips />
+    case 6: return <Tips priorities={state.onboarding.priorities} />
     default: return <Done firstName={data.firstName} onFinish={() => {
       const next: MockState = { ...state, onboarding: { ...state.onboarding, completed: true } }
       saveMockState(next)
@@ -163,21 +164,26 @@ function Intro() {
   )
 }
 
-const priorityChips = ['Gammelt hus, redd for råte', 'Tre barn', 'Eget lite selskap', 'Reiser mye', 'Bil', 'Helse', 'Flytter snart']
-const priorityReply = 'Takk. Da ser jeg først på bolig, familie og firmaet ditt. Neste steg er å finne ut hva du allerede har.'
-
 function joinNorwegian(parts: string[]) {
   return parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} og ${parts.at(-1)}`
+}
+
+// Mentions the first three chosen options (in list order); free text alone gets a general thanks.
+function priorityReply(chips: string[]) {
+  const focus = priorityLabels.filter((label) => chips.includes(label)).slice(0, 3).map(lowerFirst)
+  return focus.length
+    ? `Takk. Da ser jeg først på ${joinNorwegian(focus)}. Neste steg er å finne ut hva du allerede har.`
+    : 'Takk, det tar jeg med meg. Neste steg er å finne ut hva du allerede har.'
 }
 
 const bubbleText = 'text-base whitespace-pre-wrap'
 
 // Saved priorities are the selected chips (in chip order) followed by free-text entries.
 function Priorities({ saved, onChange }: { saved: string[]; onChange: (priorities: string[]) => void }) {
-  const [selected, setSelected] = useState(() => saved.filter((p) => priorityChips.includes(p)))
-  const [freeText, setFreeText] = useState(() => saved.filter((p) => !priorityChips.includes(p)))
+  const [selected, setSelected] = useState(() => saved.filter((p) => priorityLabels.includes(p)))
+  const [freeText, setFreeText] = useState(() => saved.filter((p) => !priorityLabels.includes(p)))
   const [lastSent, setLastSent] = useState(selected)
-  const [sent, setSent] = useState(freeText)
+  const [sent, setSent] = useState(() => freeText.map((message) => ({ message, reply: priorityReply([]) })))
   const logRef = useRef<HTMLDivElement>(null)
 
   // Only runs after the user sends something, so the reply is in view.
@@ -188,7 +194,7 @@ function Priorities({ saved, onChange }: { saved: string[]; onChange: (prioritie
   const chipsChanged = selected.length > 0 && selected.join('|') !== lastSent.join('|')
 
   function persist(chips: string[], texts: string[]) {
-    const ordered = priorityChips.filter((c) => chips.includes(c))
+    const ordered = priorityLabels.filter((c) => chips.includes(c))
     onChange([...ordered, ...texts].slice(0, MAX_PRIORITIES))
   }
 
@@ -199,11 +205,11 @@ function Priorities({ saved, onChange }: { saved: string[]; onChange: (prioritie
   }
 
   function send(text: string) {
-    const chips = chipsChanged ? priorityChips.filter((c) => selected.includes(c)) : []
-    const chipText = chips.length ? `${joinNorwegian(chips.map((c, i) => (i === 0 ? c : c.charAt(0).toLowerCase() + c.slice(1))))}.` : ''
+    const chips = chipsChanged ? priorityLabels.filter((c) => selected.includes(c)) : []
+    const chipText = chips.length ? `${joinNorwegian(chips.map((c, i) => (i === 0 ? c : lowerFirst(c))))}.` : ''
     const message = [chipText, text].filter(Boolean).join(' ')
     if (!message) return
-    setSent((current) => [...current, message])
+    setSent((current) => [...current, { message, reply: priorityReply(chips) }])
     setLastSent(selected)
     const written = text.trim().slice(0, MAX_PRIORITY_LENGTH)
     if (written && !freeText.includes(written)) {
@@ -221,7 +227,7 @@ function Priorities({ saved, onChange }: { saved: string[]; onChange: (prioritie
         <div ref={logRef} role="log" aria-label="Samtale" aria-live="polite" className="-mx-6 flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-6 pb-2">
           <ChatBubble role="assistant" className={bubbleText}>Fortell meg hva du er opptatt av akkurat nå. Velg så mange du vil, eller skriv selv.</ChatBubble>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Hva er viktig for deg?">
-            {priorityChips.map((chip) => {
+            {priorityLabels.map((chip) => {
               const active = selected.includes(chip)
               return (
                 <Button key={chip} type="button" size="sm" variant={active ? 'default' : 'outline'} aria-pressed={active} onClick={() => toggle(chip)} className="h-10 rounded-full px-3.5 text-sm">
@@ -231,10 +237,10 @@ function Priorities({ saved, onChange }: { saved: string[]; onChange: (prioritie
               )
             })}
           </div>
-          {sent.map((message, i) => (
+          {sent.map(({ message, reply }, i) => (
             <div key={i} className="flex flex-col gap-3.5">
               <ChatBubble role="user" className={cn(bubbleText, fadeUp)}>{message}</ChatBubble>
-              <ChatBubble role="assistant" className={cn(bubbleText, fadeUp)}>{priorityReply}</ChatBubble>
+              <ChatBubble role="assistant" className={cn(bubbleText, fadeUp)}>{reply}</ChatBubble>
             </div>
           ))}
         </div>
@@ -331,37 +337,22 @@ function ReadingTerms({ policies }: { policies: OnboardingData['policies'] }) {
   )
 }
 
-// Step 6 follows a full coverage ring, so it gives general advice instead of gaps.
-const tips = [
-  {
-    title: 'Husk å finne stoppekranen',
-    text: 'Da stopper du en vannlekkasje raskere. Kranen under kjøkkenbenken stenger ofte bare oppvaskmaskinen.',
-    href: 'https://www.gjensidige.no/godtforberedt/bolig-eiendom/vet-du-hvor-stoppekranen-er',
-  },
-  {
-    title: 'Husk å stenge utekranen før frosten',
-    text: 'En frostskade koster i snitt over 100 000 kroner.',
-    href: 'https://www.gjensidige.no/godtforberedt/bolig-eiendom/husk-a-stenge-utekranen-for-frosten-kommer',
-  },
-  {
-    title: 'Husk reiseforsikring utenfor EU/EØS',
-    text: 'Helsetrygdkortet gjelder ikke i for eksempel Thailand, og kredittkortets reiseforsikring har begrensninger.',
-    href: 'https://www.gjensidige.no/godtforberedt/ferie-reise/kredittkortets-reiseforsikring',
-  },
-]
-
-function Tips() {
+// Step 6 follows a full coverage ring, so it gives advice instead of gaps:
+// tips for what the customer chose in step 3, topped up with general ones.
+function Tips({ priorities }: { priorities: string[] }) {
+  const tips = tipsFor(priorities)
   return (
     <Screen className="gap-2.5 px-6 pt-5 pb-4">
       <Progress step={6} />
       <h1 className="font-display text-[30px] leading-8">Du er godt dekket.</h1>
       <p className="text-sm font-medium text-muted-foreground">Tre ting som er lurt å huske.</p>
       <ol className="flex flex-col">
-        {tips.map(({ title, text, href }, i) => (
-          <li key={title}>
+        {tips.map(({ title, text, href, reason }, i) => (
+          <li key={href}>
             <div className="flex items-start gap-3.5 py-2.5">
               <span className="w-5 shrink-0 font-display text-[26px] leading-none text-primary">{i + 1}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                {reason && <p className="text-xs leading-4 font-medium text-primary">{reason}</p>}
                 <p className="leading-snug font-bold">{title}</p>
                 <p className="text-[13px] leading-[18px] font-medium text-muted-foreground">{text}</p>
                 <a href={href} target="_blank" rel="noopener noreferrer" className="flex w-fit items-center gap-1.5 pt-0.5 text-sm font-medium text-primary underline-offset-4 hover:underline">

@@ -2,7 +2,7 @@ import type { MockInsurance } from './mock-customer'
 
 // Fictitious offers the AI may show by id ("Reise til Thailand", Figma 26:135).
 // Every visible field comes from here, never from the model, and the policy is
-// only added when Kari presses "Godkjenn og betal" in the app.
+// only added when Lisbeth presses "Godkjenn og betal" in the app.
 export type InsuranceOffer = {
   id: string
   title: string
@@ -25,7 +25,7 @@ export const insuranceOffers: Record<string, InsuranceOffer> = {
     product: 'Familiereise',
     destination: 'Thailand',
     provider: 'Gjensidige',
-    who: 'Kari og 3 barn',
+    who: 'Lisbeth og 3 barn',
     period: '14. juli – 4. august',
     startLabel: '14. juli',
     covers: 'Sykdom, ulykke, aktiviteter, avbestilling',
@@ -40,7 +40,7 @@ export const insuranceOffers: Record<string, InsuranceOffer> = {
       displayName: 'Familiereise',
       monthlyPriceNok: 0,
       oneTimePriceNok: 389,
-      insuredPeople: ['Kari Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
+      insuredPeople: ['Lisbeth Haugen', 'Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
       includes: ['Sykdom og akutt hjelp, for hele familien', 'Ulykke', 'Aktiviteter som dykking og scooter', 'Avbestilling'],
     },
   },

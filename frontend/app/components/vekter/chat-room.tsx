@@ -48,7 +48,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
   const [reviewOfferId, setReviewOfferId] = useState<string | null>(null)
   const [offerError, setOfferError] = useState('')
   const reviewOffer = getOffer(reviewOfferId)
-  // Offer buttons only work on the newest offer card, until Kari answers it.
+  // Offer buttons only work on the newest offer card, until Lisbeth answers it.
   const lastOfferIndex = messages.map((message) => blocksOf(message, 'offer').length > 0).lastIndexOf(true)
   const offerAnswered = messages.slice(lastOfferIndex + 1).some(({ role }) => role === 'user')
   const pendingRef = useRef(false)
@@ -159,7 +159,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
     setReviewOfferId(offerId)
   }
 
-  // The only path that buys an offer: Kari presses "Godkjenn og betal" in the sheet.
+  // The only path that buys an offer: Lisbeth presses "Godkjenn og betal" in the sheet.
   function approveOffer() {
     if (pendingRef.current || !state || !reviewOffer) return
     const action: MockAction = { type: 'buy-offer', offerId: reviewOffer.id }

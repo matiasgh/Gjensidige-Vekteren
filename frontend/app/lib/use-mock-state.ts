@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createDefaultState, isMockState, LEGACY_MOCK_STORAGE_KEYS, migrateLegacyState, MOCK_STORAGE_KEY, type MockState } from './mock-state'
+import { createDefaultState, isMockState, LEGACY_MOCK_STORAGE_KEYS, migrateLegacyState, MOCK_STORAGE_KEY, upgradeStoredState, type MockState } from './mock-state'
 
 // Writes synchronously, for updates made right before navigating away
 // (the hook's effect would not run after the component unmounts).
@@ -24,7 +24,7 @@ export function useMockState() {
       const stored = localStorage.getItem(MOCK_STORAGE_KEY)
       const legacy = stored ? null : LEGACY_MOCK_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find((item) => item !== null)
       if (stored) {
-        const parsed: unknown = JSON.parse(stored)
+        const parsed = upgradeStoredState(JSON.parse(stored))
         if (isMockState(parsed)) initial = parsed
         else {
           const migrated = migrateLegacyState(parsed)
@@ -32,7 +32,7 @@ export function useMockState() {
           else setStorageError('Lagrede data var ugyldige og er tilbakestilt.')
         }
       } else if (legacy) {
-        initial = migrateLegacyState(JSON.parse(legacy)) ?? initial
+        initial = migrateLegacyState(upgradeStoredState(JSON.parse(legacy))) ?? initial
       }
     } catch {
       setStorageError('Kunne ikke lese lagrede data. Standardprofilen brukes.')

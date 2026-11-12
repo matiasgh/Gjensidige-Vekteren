@@ -39,7 +39,7 @@ export function TipCard({ title, body, remindInDays, reminderSet = false, onRemi
   </ChatCard>
 }
 
-/** A proposal that always needs Kari's explicit yes. All fields come from the offer data. */
+/** A proposal that always needs Lisbeth's explicit yes. All fields come from the offer data. */
 export function OfferCard({ offer, onReview, onDecline, disabled, purchased = false, className }: { offer: InsuranceOffer; onReview?: () => void; onDecline?: () => void; disabled?: boolean; purchased?: boolean; className?: string }) {
   return <ChatCard label={`Forslag: ${offer.title}`} className={cn('border border-primary/40', className)}>
     <p className={eyebrow}>Forslag · krever ditt ja</p>
