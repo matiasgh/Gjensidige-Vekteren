@@ -12,7 +12,7 @@ export function ActionStack({ primary, secondary, hint, className }: { primary: 
   const style = (button: ActionButton, variant: 'default' | 'outline', key?: number) =>
     cloneElement(button, { key, variant, size: 'action', className: cn('w-full', button.props.className) })
   return <div className={cn('flex flex-col gap-4', className)}>
-    <div className="grid w-full gap-4 lg:w-max lg:min-w-64 lg:max-w-full lg:self-center">
+    <div className="grid w-full gap-4 lg:w-max lg:max-w-full lg:self-center">
       {style(primary, 'default')}
       {Children.toArray(secondary).filter(isValidElement).map((button, index) => style(button as ActionButton, 'outline', index))}
     </div>
