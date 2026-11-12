@@ -123,10 +123,10 @@ function Splash() {
       <div className="flex flex-1 flex-col items-center justify-center gap-3.5 px-8">
         <AssistantMark className={cn('size-[170px]', fadeUp)} />
         <h1 className="font-display text-[52px] leading-none">Vekter'n</h1>
-        <p className="text-xl font-medium text-primary">Vekter'n har våknet</p>
+        <p className="text-xl font-medium text-primary">har våknet</p>
       </div>
       <div className="flex flex-col gap-6 px-7 pb-9">
-        <StepLink to={stepHref(2)} className="shadow-lg">Møt Vekter'n</StepLink>
+        <StepLink to={stepHref(2)} className="shadow-lg">Kom i gang</StepLink>
         <p className="text-center text-sm font-medium text-primary-foreground">drevet av Gjensidige</p>
       </div>
     </Screen>
