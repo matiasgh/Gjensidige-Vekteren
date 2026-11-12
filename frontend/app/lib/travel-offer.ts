@@ -30,7 +30,7 @@ export const insuranceOffers: Record<string, InsuranceOffer> = {
     startLabel: '14. juli',
     covers: 'Sykdom, ulykke, aktiviteter, avbestilling',
     priceNok: 389,
-    priceLabel: 'kr 389 engangs',
+    priceLabel: 'kr 389',
     policy: {
       type: 'Reiseforsikring',
       category: 'Reise',
