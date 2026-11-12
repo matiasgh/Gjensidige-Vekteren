@@ -19,9 +19,7 @@ const sourceOrder: SourceKind[] = ['gjensidige', 'employer', 'other']
 
 export const meta: Route.MetaFunction = () => [{ title: "Kom i gang – Vekter'n" }]
 
-function deriveOnboarding({ firstName, employment, insurances }: MockCustomer) {
-  const kindOf = (provider: string): SourceKind =>
-    provider === 'Gjensidige' ? 'gjensidige' : provider.startsWith('Via jobb') ? 'employer' : 'other'
+function deriveOnboarding({ firstName, insurances }: MockCustomer) {
 
   // Policies are counted per category, matching the grouped list in step 5 (house + contents = one).
   const categoriesOf = (list: typeof insurances) => [...new Set(list.map((i) => i.category))]
@@ -30,18 +28,18 @@ function deriveOnboarding({ firstName, employment, insurances }: MockCustomer) {
 
   const sources = [...groups.entries()]
     .map(([provider, list]) => {
-      const kind = kindOf(provider)
+      const kind: SourceKind = list.every((insurance) => insurance.employer) ? 'employer' : provider === 'Gjensidige' ? 'gjensidige' : 'other'
       const types = [...new Set(list.map((i) => i.type.toLowerCase()))].join(', ')
       const count = categoriesOf(list).length
       if (kind === 'gjensidige') return { kind, title: 'Gjensidige', detail: `${count} ${count === 1 ? 'forsikring' : 'forsikringer'} funnet` }
-      if (kind === 'employer') return { kind, title: 'Via jobben', detail: `${employment.employer} · ${types}` }
+      if (kind === 'employer') return { kind, title: provider, detail: `Via jobb · ${types}` }
       return { kind, title: 'Annet selskap', detail: `${provider}: ${types} funnet` }
     })
     .sort((a, b) => sourceOrder.indexOf(a.kind) - sourceOrder.indexOf(b.kind))
 
   const policies = categoriesOf(insurances).map((category) => {
     const provider = insurances.find((i) => i.category === category)!.provider
-    return { category, provider: provider.startsWith('Via jobb') ? 'Via jobb' : provider }
+    return { category, provider }
   })
 
   return { firstName, sources, policies }

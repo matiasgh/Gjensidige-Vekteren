@@ -35,11 +35,15 @@ export type BlockContext = {
 
 export function coverageCheckItems(customer: MockCustomer, coverageId: string) {
   const insurance = customer.insurances.find((item) => item.coverageId === coverageId)
-  const includes = insurance?.coverageSummary?.includes ?? insurance?.includes
+  const includes = insurance?.coverages
+    ? insurance.coverages.filter(({ option, required }) => required || insurance.optionalCoverages?.[option]).map(({ title }) => title)
+    : insurance?.coverageSummary?.includes ?? insurance?.includes
   if (!insurance || !includes) return null
-  const excludes = insurance.coverageSummary?.excludes ?? insurance.excludes ?? []
+  const excludes = insurance.coverages
+    ? insurance.coverages.filter(({ option, required }) => !required && !insurance.optionalCoverages?.[option]).map(({ title }) => title)
+    : insurance.coverageSummary?.excludes ?? insurance.excludes ?? []
   return {
-    title: insurance.employer ? `${insurance.displayName} via jobb` : `${insurance.displayName} · ${insurance.provider}`,
+    title: `${insurance.displayName} · ${insurance.provider}${insurance.employer ? ' via jobb' : ''}`,
     items: [...includes.map((label) => ({ label, covered: true })), ...excludes.map((label) => ({ label, covered: false }))],
   }
 }
