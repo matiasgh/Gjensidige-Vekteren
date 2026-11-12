@@ -75,7 +75,6 @@ function TowScreen({ coverage, finish, error }: ScreenProps) {
       <StatusCheck done={false}>{towOrder.driver} ringer deg før han kommer</StatusCheck>
     </ul>
     <p className="mt-4 text-sm">{coverage?.roadside ? 'Dekket av veihjelp. Ingen egenandel.' : 'Ikke dekket av veihjelp.'}</p>
-    <p className="mt-6 text-xs text-muted-foreground">Demo: ingen bergingsbil er bestilt, og posisjonen din er ikke delt.</p>
   </FlowScreen>
 }
 

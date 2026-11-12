@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { ArrowLeft, ArrowRight, CarFront, CircleHelp, House, LoaderCircle, Phone, Plus, ShieldCheck, Umbrella } from 'lucide-react'
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
 import { ApproveOfferSheet, AssistantIdentity, AssistantMark, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, CoverageCheck, OfferCard, QuickReplies, ReceiptCard, TipCard } from '~/components/vekter'
@@ -76,7 +75,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
       if (!response.ok) throw new Error(data.error ?? 'Noe gikk galt.')
       if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error('Vekter’n svarte ikke. Prøv igjen.')
       // Purchases are never accepted from the server; only the approval sheet can buy.
-      if (!Array.isArray(data.actions) || !data.actions.every(isCoverageAction)) throw new Error('Vekter’n returnerte en ugyldig endring. Ingen demodata er endret.')
+      if (!Array.isArray(data.actions) || !data.actions.every(isCoverageAction)) throw new Error('Vekter’n returnerte en ugyldig endring. Ingenting er endret.')
       if (data.blocks !== undefined && !isAiBlockList(data.blocks, { customer, fresh: true })) throw new Error('Vekter’n svarte med et kort appen ikke kan vise. Prøv igjen.')
       // The AI only decides that the car damage flow starts; its first step is scripted.
       const reply: ChatMessage = data.flow === CAR_DAMAGE_FLOW
@@ -164,7 +163,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
   function approveOffer() {
     if (pendingRef.current || !state || !reviewOffer) return
     const action: MockAction = { type: 'buy-offer', offerId: reviewOffer.id }
-    if (!isMockAction(action)) return setOfferError('Forslaget finnes ikke i prototypen.')
+    if (!isMockAction(action)) return setOfferError('Forslaget er ikke tilgjengelig.')
     let customer: MockCustomer
     try {
       customer = applyMockAction(state.customer, action)
@@ -256,16 +255,15 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-5 py-4 sm:px-8">
           <div className="flex items-center gap-3"><Button asChild variant="ghost" size="icon-lg" className="lg:hidden"><Link to="/" aria-label="Tilbake til forsikringene"><ArrowLeft /></Link></Button><AssistantIdentity /></div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <Badge variant="outline" className="hidden sm:inline-flex">Prototype</Badge>
             <Button type="button" variant="ghost" size="icon-lg" onClick={newConversation} disabled={isLoading || !state} aria-label="Ny samtale"><Plus /></Button>
             <Dialog onOpenChange={() => setResetNotice('')}>
               <DialogTrigger asChild><Button type="button" variant="ghost" size="icon-lg" aria-label="Om Vekter’n"><CircleHelp /></Button></DialogTrigger>
               <DialogContent className="vekter-theme">
-                <DialogHeader><DialogTitle>Om Vekter’n</DialogTitle><DialogDescription>Din digitale forsikringsassistent · hackathonprototype</DialogDescription></DialogHeader>
-                <p className="text-sm leading-6">Svarene er AI-generert og kan inneholde feil. Kontroller viktig informasjon mot forsikringsvilkårene dine. Ingen forsikringsavtale endres her.</p>
-                <p className="text-sm leading-6 text-muted-foreground">Demoprofilen og alle samtaler lagres i localStorage i denne nettleseren og beholdes når siden lastes på nytt. Meldinger og gjeldende demoprofil sendes til den konfigurerte AI-tjenesten. Ikke del sensitive personopplysninger.</p>
-                <section className="space-y-3" aria-label="Demoprofil">
-                  <h2 className="text-sm font-bold">Demoprofil: {state?.customer.name ?? 'Laster …'}</h2>
+                <DialogHeader><DialogTitle>Om Vekter’n</DialogTitle><DialogDescription>Din digitale forsikringsassistent</DialogDescription></DialogHeader>
+                <p className="text-sm leading-6">Svarene er AI-generert og kan inneholde feil. Kontroller viktig informasjon mot forsikringsvilkårene dine.</p>
+                <p className="text-sm leading-6 text-muted-foreground">Profilen og alle samtaler lagres i denne nettleseren og beholdes når siden lastes på nytt. Meldinger og gjeldende profil sendes til den konfigurerte AI-tjenesten. Ikke del sensitive personopplysninger.</p>
+                <section className="space-y-3" aria-label="Profil">
+                  <h2 className="text-sm font-bold">Profil: {state?.customer.name ?? 'Laster …'}</h2>
                   <ul className="space-y-1 text-sm text-muted-foreground">{state?.customer.insurances.map((insurance) => <li key={insurance.coverageId}>{insurance.type}: {insurance.coverage}{insurance.optionalCoverages && ` · ${Object.entries(insurance.optionalCoverages).filter(([, enabled]) => enabled).map(([option]) => coverageOptionLabels[option]).join(', ') || 'ingen tilvalg'}`}</li>)}</ul>
                   <Button type="button" variant="destructive" disabled={isLoading || !state} onClick={resetAllDemoData}>Tilbakestill alle demodata</Button>
                   <p className="text-xs text-muted-foreground">Gjenoppretter standardkunden og forsikringene, sletter alle samtaler og starter en ny, tom samtale. Dette kan ikke angres.</p>

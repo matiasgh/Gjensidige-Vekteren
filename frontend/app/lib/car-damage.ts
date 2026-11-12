@@ -75,14 +75,14 @@ export function claimConfirmation(details: ClaimDetails, coverage: CarCoverage |
   const cover = coverage?.kasko
     ? `Skaden dekkes av kaskoen din med egenandel ${money(coverage.deductibleNok)}.`
     : 'Du har ikke kasko, så skaden dekkes ikke av bilforsikringen din.'
-  return `Skademeldingen er sendt. Saksnummer ${caseNumber}.\n\nSkade: ${details.damage}\nNår: ${details.when}\nHvor: ${details.where}\n\n${cover} Dette er en demo, så ingenting er sendt til Gjensidige.`
+  return `Skademeldingen er sendt. Saksnummer ${caseNumber}.\n\nSkade: ${details.damage}\nNår: ${details.when}\nHvor: ${details.where}\n\n${cover}`
 }
 
 export function bookingConfirmation(workshop: Workshop, coverage: CarCoverage | null) {
   const cost = coverage?.kasko
     ? `Egenandelen på ${money(coverage.deductibleNok)} betaler du på verkstedet.`
     : `Du har ikke kasko, så du betaler reparasjonen selv (estimert ${workshop.estimate}).`
-  return `Timen er booket hos ${workshop.name} ${workshop.day} kl. ${workshop.time}. ${cost} Dette er en demo, så ingen time er reservert.`
+  return `Timen er booket hos ${workshop.name} ${workshop.day} kl. ${workshop.time}. ${cost}`
 }
 
 export function createCaseNumber() {

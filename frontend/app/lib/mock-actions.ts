@@ -12,8 +12,8 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
   const next = structuredClone(customer)
   if (action.type === 'buy-offer') {
     const offer = getOffer(action.offerId)
-    if (!offer) throw new Error('Forslaget finnes ikke i prototypen.')
-    if (isOfferPurchased(next.insurances, offer.id)) throw new Error('Denne forsikringen er allerede lagt til i demoprofilen.')
+    if (!offer) throw new Error('Forslaget er ikke tilgjengelig.')
+    if (isOfferPurchased(next.insurances, offer.id)) throw new Error('Denne forsikringen er allerede lagt til i profilen.')
     next.insurances.push(structuredClone(offer.policy))
     return next
   }
@@ -28,7 +28,7 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
     case 'set-coverage-level': {
       const levels = levelsFor(insurance.coverageId)
       if (!levels || !Object.hasOwn(levels, action.targetCoverageId)) {
-        throw new Error('Denne dekningsendringen er ikke definert i prototypen ennå.')
+        throw new Error('Denne dekningsendringen støttes ikke ennå.')
       }
       insurance.coverageId = action.targetCoverageId
       insurance.coverage = levels[action.targetCoverageId]
@@ -36,7 +36,7 @@ export function applyMockAction(customer: MockCustomer, action: MockAction): Moc
     }
     case 'set-coverage-option':
       if (!insurance.optionalCoverages || !Object.hasOwn(insurance.optionalCoverages, action.option) || typeof action.enabled !== 'boolean') {
-        throw new Error('Dette tilvalget er ikke definert i prototypen ennå.')
+        throw new Error('Dette tilvalget støttes ikke ennå.')
       }
       if (!action.enabled && insurance.coverages?.some((coverage) => coverage.option === action.option && coverage.required)) {
         throw new Error('Påkrevde dekninger kan ikke slås av.')
