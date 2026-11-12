@@ -127,20 +127,15 @@ export const mockCustomer: MockCustomer = {
     {
       type: 'Bilforsikring',
       category: 'Bil',
-      provider: 'If',
+      provider: 'Gjensidige',
       coverage: 'Kasko',
       registrationNumber: 'EL 48213',
-      coverageId: 'car-if-kasko',
+      coverageId: 'car-kasko',
       displayName: 'Bil',
       monthlyPriceNok: 290,
       vehicle: 'Volvo XC60',
       renewalDate: '1. mars',
-      collisionDeductibleNok: 6000,
-      coverageSummary: {
-        basis: fictionalSummary,
-        includes: ['Ansvar', 'Brann, tyveri og glasskade', 'Kollisjon og utforkjøring', 'Veihjelp'],
-        excludes: ['Leiebil', 'Punkteringsdekning'],
-      },
+      collisionDeductibleNok: 8000,
       optionalCoverages: { liability: true, partial: true, collision: true, roadside: true, rentalCar: false, puncture: false },
       coverages: [
         { option: 'liability', title: 'Ansvar', monthlyPriceNok: 65, required: true },
@@ -177,19 +172,17 @@ export const mockCustomer: MockCustomer = {
     {
       type: 'Barneforsikring',
       category: 'Barneforsikring',
-      provider: 'Gjensidige',
-      coverage: 'Barneforsikring – Medium',
-      coverageId: 'child-medium',
+      provider: 'If',
+      coverage: 'Barneforsikring',
+      coverageId: 'child-if',
       displayName: 'Barneforsikring',
       monthlyPriceNok: 120,
-      includes: ['Økonomisk støtte ved alvorlig sykdom og ulykke', 'Uførepensjon etter avtalens vilkår', 'Helsehjelp for barna'],
       insuredPeople: ['Barn på 6 år', 'Barn på 9 år', 'Barn på 13 år'],
-      optionalCoverages: { illnessAndAccidents: true, disabilityPension: true, healthCare: true },
-      coverages: [
-        { option: 'illnessAndAccidents', title: 'Alvorlig sykdom og ulykke', monthlyPriceNok: 50, description: 'Økonomisk støtte til barna' },
-        { option: 'disabilityPension', title: 'Uførepensjon', monthlyPriceNok: 45, description: 'Etter avtalens vilkår' },
-        { option: 'healthCare', title: 'Helsehjelp', monthlyPriceNok: 25, description: 'Helsehjelp for barna' },
-      ],
+      coverageSummary: {
+        basis: fictionalSummary,
+        includes: ['Økonomisk støtte ved alvorlig sykdom og ulykke', 'Uførepensjon etter avtalens vilkår', 'Helsehjelp for barna'],
+        excludes: ['Lisbeth selv er ikke med i denne avtalen'],
+      },
     },
     {
       type: 'Livsforsikring',
@@ -229,7 +222,6 @@ export const mockCustomer: MockCustomer = {
 // Coverage levels the demo can switch between, per product family (names match the catalogue).
 export const coverageLevels: Record<string, string>[] = [
   { building: 'Hus', 'building-plus': 'Hus Pluss' },
-  { 'child-basis': 'Barneforsikring – Basis', 'child-medium': 'Barneforsikring – Medium', 'child-plus': 'Barneforsikring – Pluss' },
   { 'travel-standard': 'Reise', 'travel-plus': 'Reise Pluss' },
 ]
 
@@ -242,7 +234,6 @@ export const optionLabels: Record<string, string> = {
   pestControlAddon: 'Tillegg for bekjempelse av mus og rotter',
   buildingDamage: 'Brann, vann og naturskader', rodents: 'Bekjempelse av mus og rotter', liability: 'Ansvar og rettshjelp',
   contentsDamage: 'Brann og vannskader på innbo', theftAndAccidents: 'Tyveri og uhell',
-  illnessAndAccidents: 'Alvorlig sykdom og ulykke', disabilityPension: 'Uførepensjon', healthCare: 'Helsehjelp',
   travelMedical: 'Sykdom og akutt hjelp på reise', baggageAndDelay: 'Bagasje og forsinkelse', cancellation: 'Avbestilling', familyTravel: 'Familiedekning',
 }
 

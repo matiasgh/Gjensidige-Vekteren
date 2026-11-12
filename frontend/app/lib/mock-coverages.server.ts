@@ -109,11 +109,11 @@ const buildingCommon = {
 }
 
 export const mockInsuranceCatalogue = {
-  'car-if-kasko': {
-    name: 'Bilforsikring – If Kasko',
+  'child-if': {
+    name: 'Barneforsikring – If',
     basis: 'Fiktivt, forenklet demosammendrag, ikke faktiske produktvilkår fra If',
-    includes: ['Ansvar', 'Brann, tyveri og glasskade', 'Kollisjon og utforkjøring', 'Veihjelp'],
-    exclusionsAndConditions: ['Leiebil og punkteringsdekning er ikke valgt i demoavtalen', 'Gjensidiges bilvilkår gjelder ikke denne avtalen. Henvis til forsikringsbeviset og If for detaljer.'],
+    includes: ['Økonomisk støtte ved alvorlig sykdom og ulykke', 'Uførepensjon etter avtalens vilkår', 'Helsehjelp for barna'],
+    exclusionsAndConditions: ['Lisbeth selv er ikke med i denne avtalen', 'Gjensidiges barneforsikringsvilkår gjelder ikke denne avtalen. Henvis til forsikringsbeviset og If for detaljer.'],
   },
   'car-kasko': {
     name: 'Bilforsikring – Kasko',
@@ -258,9 +258,9 @@ export const mockCoverageInteractions = {
     },
     {
       situation: 'Et barn blir sykt før avreise eller under reisen',
-      relevantCoverageIds: ['travel-standard', 'travel-plus', 'child-basis', 'child-medium', 'child-plus'],
-      sources: [productSources.travel, productSources.child],
-      explanation: 'Familiedekningen kan omfatte avbestilling og akutt sykdom på reise etter vilkårene. Dette betyr ikke at egen barneforsikring er kjøpt. Reise Pluss har også ulykkesdekning, men den må ikke likestilles med barneforsikringens sykdoms- og uføreytelser.',
+      relevantCoverageIds: ['travel-standard', 'travel-plus', 'child-if'],
+      sources: [productSources.travel],
+      explanation: 'Familiedekningen kan omfatte avbestilling og akutt sykdom på reise etter vilkårene. Barneforsikringen hos If er en egen avtale; beskriv den bare ut fra coverageSummary og henvis til If for vilkår og skademelding. Reise Pluss har også ulykkesdekning, men den må ikke likestilles med barneforsikringens sykdoms- og uføreytelser.',
     },
     {
       situation: 'Brann skader bygning, innbo og bil',

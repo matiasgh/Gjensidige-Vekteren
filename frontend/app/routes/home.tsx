@@ -43,7 +43,7 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
   const changes = insurance.coverages?.filter(({ option }) => options[option] !== insurance.optionalCoverages?.[option]) ?? []
   const dirty = canEdit && changes.length > 0
   const tippedOptions = new Set(insurance.coverages?.filter(({ tip }) => tip?.trim()).slice(0, 2).map(({ option }) => option))
-  const question = isCar ? 'Hva bør jeg vite om bilforsikringen min hos If og tilvalgene mine?' : `Hva dekker ${insurance.displayName.toLowerCase()} hos ${insurance.provider}${isWork ? ' via jobb' : ''}?`
+  const question = isCar ? 'Hva bør jeg vite om bilforsikringen min hos Gjensidige og tilvalgene mine?' : `Hva dekker ${insurance.displayName.toLowerCase()} hos ${insurance.provider}${isWork ? ' via jobb' : ''}?`
 
   useEffect(() => {
     if (!notice) return
