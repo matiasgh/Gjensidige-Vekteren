@@ -1,12 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { ArrowRight, BriefcaseBusiness, CarFront, Check, ChevronLeft, House, LockKeyhole, Plane, Users, X } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
 import { AssistantMark, CoverageRing, CoverageRow, InsuranceRow } from '~/components/vekter'
-import { applyMockAction, carCoverageOptions, carMonthlyPrice } from '~/lib/mock-actions'
-import { optionLabels, type InsuranceCategory, type MockInsurance } from '~/lib/mock-customer'
+import { applyMockAction, insuranceMonthlyPrice } from '~/lib/mock-actions'
+import { type InsuranceCategory, type MockInsurance } from '~/lib/mock-customer'
 import { saveMockState, useMockState } from '~/lib/use-mock-state'
 import { createConversation } from '~/lib/mock-state'
 import ChatRoom from '~/components/vekter/chat-room'
@@ -38,17 +38,29 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const isCar = insurance.coverageId === 'car-kasko'
-  const canEditCar = isCar && insurance.provider === 'Gjensidige' && !insurance.employer
+  const canEdit = insurance.provider === 'Gjensidige' && !insurance.employer
   const isWork = !!insurance.employer
-  const price = isCar ? carMonthlyPrice(options) : insurance.monthlyPriceNok
-  const dirty = Object.keys(options).some((key) => options[key] !== insurance.optionalCoverages?.[key])
+  const price = canEdit ? insuranceMonthlyPrice(insurance, options) : insurance.monthlyPriceNok
+  const changes = insurance.coverages?.filter(({ option }) => options[option] !== insurance.optionalCoverages?.[option]) ?? []
+  const dirty = canEdit && changes.length > 0
+  const tippedOptions = new Set(insurance.coverages?.filter(({ tip }) => tip?.trim()).slice(0, 2).map(({ option }) => option))
   const question = isCar ? 'Hva bør jeg vite om bilforsikringen min og tilvalgene mine?' : isWork ? 'Hva dekker reiseforsikringen min via jobb?' : `Hva dekker ${insurance.displayName.toLowerCase()}?`
 
+  useEffect(() => {
+    if (!notice) return
+    const timeout = setTimeout(() => setNotice(''), 5000)
+    return () => clearTimeout(timeout)
+  }, [notice])
+
   function save() {
+    if (!dirty) return
     try {
       onSave(options)
       setError('')
-      setNotice('Endringene er lagret i demoprofilen. Ingen reell avtale er endret.')
+      const confirmation = changes.length === 1
+        ? `${changes[0].title} er slått ${options[changes[0].option] ? 'på' : 'av'}.`
+        : `${changes.length} endringer er lagret.`
+      setNotice(`${confirmation} Ny pris: kr ${money(price)} / mnd.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kunne ikke lagre endringene.')
     }
@@ -61,30 +73,31 @@ function PolicyDetails({ insurance, onSave, onAsk, chatError }: { insurance: Moc
     </div>
     <h1 className={`font-display ${isCar ? 'text-[32px] leading-9' : 'text-4xl leading-10'}`}>{insurance.displayName}{isCar && ` · ${insurance.vehicle}`}</h1>
     {isWork ? <p className="leading-6 text-muted-foreground">Betalt av arbeidsgiver · gjelder deg, opptil {insurance.maxTripDays} dager per reise</p> : <div className="flex items-end gap-2"><p className="font-display text-5xl leading-[52px] text-primary">kr {money(price)}</p><span className="text-muted-foreground">/ mnd</span></div>}
-    {isCar ? <>
-      <p className="text-sm text-muted-foreground">Egenandel kr {money(insurance.collisionDeductibleNok ?? 0)} · Fornyes {insurance.renewalDate}</p>
-      <section aria-labelledby="car-coverages" className="w-full">
-        <h2 id="car-coverages" className="policy-eyebrow mb-3.5">Dekninger</h2>
-        <CoverageRow title="Ansvar" description="Påkrevd ved lov" checked disabled className="policy-switch policy-switch-required" />
-        {carCoverageOptions.map(({ option, title, price: optionPrice }) => <CoverageRow key={option} title={title} description={`kr ${optionPrice} / mnd`} checked={options[option]} disabled={!canEditCar} className="policy-switch" onCheckedChange={(enabled) => {
-          setOptions((current) => ({ ...current, [option]: enabled, ...(option === 'partial' && !enabled ? { collision: false } : {}), ...(option === 'collision' && enabled ? { partial: true } : {}) }))
-          setNotice('')
-        }} />)}
+    {isCar && <p className="text-sm text-muted-foreground">Egenandel kr {money(insurance.collisionDeductibleNok ?? 0)} · Fornyes {insurance.renewalDate}</p>}
+    {canEdit ? <>
+      <section aria-labelledby="policy-coverages" className="w-full">
+        <h2 id="policy-coverages" className="policy-eyebrow mb-3.5">Dekninger</h2>
+        {insurance.coverages?.map(({ option, title, monthlyPriceNok, description, required, tip }) => <div key={option}>
+          <CoverageRow title={title} description={required ? 'Påkrevd' : `${description ? `${description} · ` : ''}kr ${money(monthlyPriceNok)} / mnd`} checked={required || !!options[option]} disabled={required} className={`policy-switch ${required ? 'policy-switch-required' : ''}`} onCheckedChange={(enabled) => {
+            setOptions((current) => ({ ...current, [option]: enabled, ...(option === 'partial' && !enabled ? { collision: false } : {}), ...(option === 'collision' && enabled ? { partial: true } : {}) }))
+            setNotice('')
+            setError('')
+          }} />
+          {tip && tippedOptions.has(option) && <div className="flex items-start gap-2.5 py-2.5 text-sm leading-5.5 text-[#d6ddee]"><AssistantMark className="size-6" /><p>{tip}</p></div>}
+        </div>)}
       </section>
-      {canEditCar ? <PolicyNote>Veihjelp har du ikke brukt på 3 år, men den er billig. Leiebil trenger du kanskje ikke.</PolicyNote> : <PolicyNote locked>Bilforsikringen er hos {insurance.provider}. Kontakt selskapet for å endre dekningene.</PolicyNote>}
     </> : <>
       {(insurance.coverageSummary?.includes ?? insurance.includes) && <CoverageList title="Dekker" items={insurance.coverageSummary?.includes ?? insurance.includes!} />}
       {(insurance.coverageSummary?.excludes ?? insurance.excludes) && <CoverageList title="Dekker ikke" items={insurance.coverageSummary?.excludes ?? insurance.excludes!} excluded />}
-      {insurance.optionalCoverages && <section className="w-full" aria-label="Lagrede tilvalg"><h2 className="policy-eyebrow">Tilvalg i demoprofilen</h2>{Object.entries(insurance.optionalCoverages).map(([option, enabled]) => <p key={option} className="mt-3 text-sm">{optionLabels[option] ?? option}: {enabled ? 'Valgt' : 'Ikke valgt'}</p>)}</section>}
       {isWork && <PolicyNote locked>Dekningene kan ikke endres her. Avtalen styres av arbeidsgiveren din.</PolicyNote>}
-      {!isWork && <PolicyNote>Dette er en forenklet oversikt over en fiktiv demoavtale. Spør meg om du vil vite mer om dekningene.</PolicyNote>}
+      {!isWork && <PolicyNote locked>Dekningene kan ikke endres her. Kontakt {insurance.provider} for å endre avtalen.</PolicyNote>}
     </>}
     <div className="min-h-4 flex-1" />
-    {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
+    {notice && <div role="status" aria-live="polite" className="fixed right-4 bottom-[max(16px,env(safe-area-inset-bottom))] left-4 z-50 flex items-start gap-3 rounded-xl border border-primary/40 bg-card p-4 text-sm shadow-lg lg:left-auto lg:max-w-md"><Check aria-hidden="true" className="size-5 shrink-0 text-primary" /><p className="flex-1">{notice}</p><Button type="button" size="icon-sm" variant="ghost" aria-label="Lukk bekreftelsen" onClick={() => setNotice('')}><X className="size-4" /></Button></div>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {chatError && <p role="alert" className="text-sm text-destructive">{chatError}</p>}
     {dirty && <p className="text-xs text-muted-foreground">Du har ulagrede endringer. Chatten bruker den sist lagrede demoprofilen.</p>}
-    {canEditCar && <Button onClick={save} className={actionClass}>Lagre endringer</Button>}
+    {canEdit && <Button onClick={save} disabled={!dirty} className={actionClass}>Lagre endringer</Button>}
     <Button type="button" onClick={() => onAsk(question)} variant={isCar ? 'outline' : 'default'} className={`${actionClass} ${isCar ? 'border-[#7f8bc0] bg-transparent' : ''}`}>Spør Vekter’n om {isCar ? 'bilforsikringen' : isWork ? 'reisen' : 'forsikringen'}</Button>
     {isWork && <Button asChild variant="outline" className={`${actionClass} border-[#7f8bc0] bg-transparent`}><Link to={`/chat?question=${encodeURIComponent('Hvilken ekstra reiseforsikring kan jeg vurdere for familien, siden jobbens avtale bare dekker meg?')}`}>Se ekstra dekning for familien</Link></Button>}
   </main>
@@ -110,10 +123,12 @@ export default function Home() {
   if (params.has('steg')) return <Navigate to={`/onboarding?steg=${encodeURIComponent(params.get('steg') ?? '1')}`} replace />
   if (state && !state.onboarding.completed) return <Navigate to="/onboarding" replace />
 
-  function saveCar(options: Record<string, boolean>) {
-    if (!state || !insurance) return
-    const updated = Object.entries(options).reduce((current, [option, enabled]) => applyMockAction(current, { type: 'set-coverage-option', coverageId: insurance.coverageId, option, enabled }), state.customer)
-    setState({ ...state, customer: updated })
+  function saveCoverages(options: Record<string, boolean>) {
+    if (!state || !insurance) throw new Error('Forsikringen kunne ikke lastes. Prøv igjen.')
+    const updated = Object.entries(options).filter(([option, enabled]) => enabled !== insurance.optionalCoverages?.[option]).reduce((current, [option, enabled]) => applyMockAction(current, { type: 'set-coverage-option', coverageId: insurance.coverageId, option, enabled }), state.customer)
+    const next = { ...state, customer: updated }
+    if (!saveMockState(next)) throw new Error('Kunne ikke lagre endringene. Prøv igjen.')
+    setState(next)
   }
 
   function startChat(question = message) {
@@ -172,7 +187,7 @@ export default function Home() {
       </>}
     </aside>
     <div className={`${insurance || isChat ? 'block' : 'hidden'} min-w-0 flex-1 lg:block lg:h-dvh lg:overflow-y-auto`}>
-      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCar} onAsk={startChat} chatError={chatError} /></div> : damageFlow ? <CarDamageScreen key={location.pathname} flow={damageFlow} state={state} setState={setState} /> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
+      {insurance ? <div className="mx-auto w-full max-w-[441px] pt-[max(48px,env(safe-area-inset-top))] lg:max-w-none lg:px-8"><PolicyDetails key={insurance.coverageId} insurance={insurance} onSave={saveCoverages} onAsk={startChat} chatError={chatError} /></div> : damageFlow ? <CarDamageScreen key={location.pathname} flow={damageFlow} state={state} setState={setState} /> : <ChatRoom key={`${location.pathname}${location.search}`} {...store} />}
     </div>
   </div>
 }

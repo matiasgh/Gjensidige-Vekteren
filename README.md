@@ -3,11 +3,11 @@ Hackathon Gjensidige
 
 ## Vekteren prototype
 
-The home route `/` implements the Figma insurance overview. Select a policy to view its details; Bil has staged coverage switches and **Lagre endringer** applies deterministic mock actions to the local profile. Turning off Delkasko also turns off Kasko; enabling Kasko also enables Delkasko. The monthly price and home total reflect saved selections. Prices and the illustrated “100 % dekket” score are fictitious prototype data, not quotes or a needs assessment.
+The home route `/` implements the Figma insurance overview. All Gjensidige policies have staged coverage switches; required coverages stay on and display **Påkrevd**. The detail price updates immediately, while the overview total updates after **Lagre endringer** successfully persists the choices. Saving is disabled without changes and shows a dismissible five-second toast with the changes and new price. Turning off Delkasko also turns off Kasko; enabling Kasko also enables Delkasko. Optional user-specific `tip` fields live on coverages in Kari's demo profile, with at most two shown per policy and no shared advice below the list. All coverage prices are fictitious demo allocations, not product quotes. The illustrated “100 % dekket” score remains unchanged and is not a needs assessment.
 
 The employer-paid travel policy is read-only. Its family-coverage action opens a contextual question, not a purchase. **Spør Vekter’n** opens the existing chat at `/chat`; the chat receives the same saved profile and can change supported demo options through validated mock actions. Asking questions still requires the AI environment variables below.
 
-Stored state uses schema version 2 with Kari Haugen's onboarding scenario. House and contents are grouped in the overview but remain separate policies for coverage changes. Open Kari's profile button, then the conversation room, to manage conversations or reset demo data through **Om Vekter’n**.
+Stored state uses schema version 2 with Kari Haugen's onboarding scenario. Pre-toggle Kari profiles are enriched with coverage rows while preserving saved options, conversations and onboarding; incompatible profiles fall back to the seed. House and contents are grouped in the overview but remain separate policies for coverage changes. Open Kari's profile button, then the conversation room, to manage conversations or reset demo data through **Om Vekter’n**.
 
 ### Bulk i bilen (car damage flow)
 
