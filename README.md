@@ -46,7 +46,7 @@ npm run typecheck
 | `/components` | Interactive catalog of the component library. |
 | `/api/chat` | Server-only resource route (POST) for the AI call. |
 
-The customer seed (the Kari scenario, policies with `provider`/`coverageSummary`, and the hardcoded `gapAnalysis`) lives in the client-safe `app/lib/mock-customer.ts`. The onboarding and the chat both read it from the persisted demo state below, so it is the single source of truth. Both screens are built from the component library (`app/components/ui` and `app/components/vekter`).
+The customer seed (the Kari scenario and policies with `provider`/`coverageSummary`) lives in the client-safe `app/lib/mock-customer.ts`. The onboarding and the chat both read it from the persisted demo state below, so it is the single source of truth. Both screens are built from the component library (`app/components/ui` and `app/components/vekter`).
 
 Any OpenAI-compatible provider works if you change `AI_BASE_URL` and `AI_MODEL`, for example OpenAI, Gemini (`https://generativelanguage.googleapis.com/v1beta/openai`), Groq (`https://api.groq.com/openai/v1`) or OpenRouter (`https://openrouter.ai/api/v1`).
 

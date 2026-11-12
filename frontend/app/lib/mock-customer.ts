@@ -42,8 +42,6 @@ export type MockInsurance = {
   note?: string
 }
 
-export type GapFinding = { title: string; reason: string; actionLabel: string }
-
 export type MockCustomer = {
   name: string
   firstName: string
@@ -58,8 +56,6 @@ export type MockCustomer = {
   }
   plannedTrips: { destination: string; period: string; travellers: string[] }[]
   insurances: MockInsurance[]
-  // Vekter'n's earlier, non-binding assessment shown to the customer during onboarding.
-  gapAnalysis: GapFinding[]
 }
 
 const fictionalSummary = 'Fiktivt, forenklet sammendrag for demo – ikke reelle vilkår fra selskapet'
@@ -207,23 +203,6 @@ export const mockCustomer: MockCustomer = {
       },
     },
   ],
-  gapAnalysis: [
-    {
-      title: 'Råte er ikke dekket',
-      reason: 'Huset er fra 1962, og råteskader er blant de dyreste skadene for hus på din alder. Jeg anbefaler en råtesjekk.',
-      actionLabel: 'Se godkjente håndverkere',
-    },
-    {
-      title: 'Barna mangler på reise',
-      reason: 'Jobbens reiseforsikring dekker bare deg. Familien er ikke med til Thailand i juli.',
-      actionLabel: 'Se hva det koster',
-    },
-    {
-      title: 'Du betaler for noe du ikke trenger',
-      reason: 'Innboforsikringen har et tillegg du aldri har brukt og som huset ditt allerede dekker. Du kan fjerne det.',
-      actionLabel: 'Se hva du sparer',
-    },
-  ],
 }
 
 // Coverage levels the demo can switch between, per product family (names match the catalogue).
@@ -293,8 +272,7 @@ export function isMockCustomer(value: unknown): value is MockCustomer {
     || new Set(bought.map((policy) => policy.coverageId)).size !== bought.length) return false
   if (!matchesShape({ ...value, insurances: all.slice(0, seedCount) }, mockCustomer)) return false
   const customer = value as MockCustomer
-  return customer.gapAnalysis.length === mockCustomer.gapAnalysis.length
-    && customer.insurances.slice(0, seedCount).every((insurance, index) => {
+  return customer.insurances.slice(0, seedCount).every((insurance, index) => {
       const seed = mockCustomer.insurances[index]
       if (insurance.type !== seed.type || insurance.category !== seed.category || insurance.provider !== seed.provider) return false
       if (insurance.employer !== seed.employer || insurance.monthlyPriceNok < 0) return false
