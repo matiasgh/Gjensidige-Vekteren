@@ -9,6 +9,10 @@ The employer-paid travel policy is read-only. Its family-coverage action opens a
 
 Stored state uses schema version 2 with Kari Haugen's onboarding scenario. House and contents are grouped in the overview but remain separate policies for coverage changes. Open Kari's profile button, then the conversation room, to manage conversations or reset demo data through **Om Vekter’n**.
 
+### Bulk i bilen (car damage flow)
+
+When Kari reports damage to her car, the AI calls the tool `start_car_damage_flow` and `/api/chat` returns a flow marker. The chat then follows the Figma frame “3 · Chat: bulk i bilen” with fixed texts from `app/lib/car-damage.ts`. It asks whether everyone is unhurt (“Noen er skadet” shows a 113 safety reply), asks for a photo, and offers **Meld skade**, **Finn verksted** and **Kontakt bilbergning**. The **+** button in the composer opens **Legg ved** (camera, photo library, file, or a bundled example image). It is always available, and any photo gets the same scripted analysis: there is no image recognition. Photos are downscaled to about 800 px JPEG and stored in the conversation in localStorage. They are never sent to the AI; `/api/chat` receives the note “[Kari sendte et bilde av skaden]” instead. Coverage, deductible and registration come from the saved profile: with Kasko off the dent is not covered, and with Veihjelp off towing is shown as not covered. Confirmations (case number, booking, towing) are posted back into the active conversation. Nothing is sent, booked or called for real.
+
 ### Internal component library
 
 The frontend uses shadcn/ui primitives with a scoped Vekter’n theme based on the Figma prototype. Run the frontend and visit `/components` for the interactive catalog. Reusable product components live in `frontend/app/components/vekter`, with usage and design limitations documented in [`frontend/app/components/README.md`](frontend/app/components/README.md). The catalog is a normal development showcase route, not access-controlled.
@@ -32,6 +36,7 @@ npm run typecheck
 | `/` | Insurance overview. New profiles start onboarding; completed profiles see the desktop overview/chat layout or mobile overview. |
 | `/onboarding` | Seven onboarding steps, from `/onboarding?steg=1` to `steg=7`. Existing `/?steg=N` links redirect here. Completion leads to `/`. |
 | `/chat` | Chat with Vekter'n, with the persistent overview column on desktop. |
+| `/skade/meld`, `/skade/verksted`, `/skade/berging` | Follow-up screens of the “bulk i bilen” flow (skademelding, workshop booking, towing). They return to `/chat` and render in the chat column on desktop. |
 | `/components` | Interactive catalog of the component library. |
 | `/api/chat` | Server-only resource route (POST) for the AI call. |
 
@@ -41,7 +46,7 @@ Any OpenAI-compatible provider works if you change `AI_BASE_URL` and `AI_MODEL`,
 
 ### Persistent demo state
 
-The onboarding and `/chat` seed the fictitious customer from `app/lib/mock-customer.ts` on first use and store the current customer, all conversations, the selected conversation and the onboarding progress (`onboarding.completed` and the step 3 `priorities`) in browser localStorage under `vekteren.mock-state.v2`. Version 1 data (`vekteren.mock-state.v1`, previous demo customer) is migrated once: conversations are kept and the customer is replaced by the Kari seed. Reloading restores that state; **Ny samtale** keeps previous conversations available in the conversation selector. The step 3 priorities are sent to the AI as the customer's own stated priorities. Pages that need the state render a placeholder until it has been read after hydration. Storage is local to the browser, not a server-side customer record. Invalid/unsupported stored state falls back to the defaults; storage failures are displayed rather than silently claiming persistence.
+The onboarding and `/chat` seed the fictitious customer from `app/lib/mock-customer.ts` on first use and store the current customer, all conversations, the selected conversation and the onboarding progress (`onboarding.completed` and the step 3 `priorities`) in browser localStorage under `vekteren.mock-state.v2`. Version 1 data (`vekteren.mock-state.v1`, previous demo customer) is migrated once: conversations are kept and the customer is replaced by the Kari seed. Reloading restores that state; **Ny samtale** keeps previous conversations available in the conversation selector. The step 3 priorities are sent to the AI as the customer's own stated priorities. Pages that need the state render a placeholder until it has been read after hydration. Storage is local to the browser, not a server-side customer record. Invalid/unsupported stored state falls back to the defaults; storage failures are displayed rather than silently claiming persistence. Chat messages may carry optional `image` (data URL) and `kind` (flow step) fields; existing v2 data stays valid.
 
 Open **Om Vekter’n → Tilbakestill alle demodata** to restore the default customer and policy choices, reset the onboarding progress, delete all conversations, and start a new empty conversation in one click. A visible confirmation explains what was reset. This replaces only this app's stored demo state, not other localStorage entries. Storage failures are shown in the dialog. Do not enter real personal data: chat messages and the current demo profile are sent to the configured AI provider.
 

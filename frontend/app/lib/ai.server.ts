@@ -1,7 +1,8 @@
 import 'dotenv/config'
 import { optionLabels, type MockCustomer } from './mock-customer'
 import { applyMockAction, isMockAction } from './mock-actions'
-import type { ChatMessage } from './mock-state'
+import type { ApiChatMessage } from './mock-state'
+import { CAR_DAMAGE_FLOW, carDamageTexts } from './car-damage'
 import { catalogueMetadata, mockCoverageInteractions, mockInsuranceCatalogue } from './mock-coverages.server'
 
 const VEKTEREN_SYSTEM_PROMPT = `Du er Vekter'n (Vekteren), Gjensidiges digitale forsikringsassistent som passer på alle kundens forsikringer, uansett hvem som leverer dem.
@@ -44,6 +45,8 @@ Du må bruke verktøyet for å utføre en endring. Ikke påstå i et vanlig teks
 Tilgjengelige demoendringer: nivåbytte innenfor samme produktfamilie (building/building-plus for hus, child-basis/child-medium/child-plus for barneforsikring), og eksisterende boolske optionalCoverages på kundens avtaler, for eksempel å legge til rotAndPestAddon på huset, fjerne pestControlAddon på innboet eller endre bilens prototypebrytere. Arbeidsgiveravtalen og bedriftsforsikringen kan ikke endres.
 Ikke finn på nye produkter, tilvalg, priser eller øvrige endringer. Andre endringsflyter er ikke definert ennå; forklar begrensningen.
 En endring gjelder bare lokale demodata og må omtales som dette, aldri som en reell avtaleendring.
+Når kunden forteller at bilen har fått en ny skade, for eksempel bulk, ripe, kollisjon, påkjørsel eller at noen har rygget inn i bilen, skal du bruke verktøyet start_car_damage_flow i stedet for å svare med tekst. Appen starter da en fast skadeflyt som spør om alle er uskadet og ber om et bilde. Ikke bruk verktøyet ved generelle spørsmål om bilforsikring eller skademelding uten en konkret skade.
+Meldinger i hakeparentes, for eksempel «[Kari sendte et bilde av skaden]», er notater fra appen. Bildet er vurdert i en fast demoflyt; du ser det ikke selv.
 Svar direkte. Ved endringer, presiser at bare demoprofilen endres.
 Legg alltid følgende merknad helt nederst i svaret, i et eget avsnitt:
 «Merk: Kundeprofilen og avtalevalgene er fiktive demodata. Produktinformasjonen er forenklet; fullstendige avtalevilkår gjelder.»
@@ -62,6 +65,15 @@ Samspill mellom forsikringer (scenarioene beskriver bare oppgitte vilkår, ikke 
 ${JSON.stringify(mockCoverageInteractions, null, 2)}`
 
 const error = (message: string, status = 500) => Response.json({ error: message }, { status })
+
+const carDamageTool = {
+  type: 'function',
+  function: {
+    name: 'start_car_damage_flow',
+    description: 'Start den faste skadeflyten når kunden forteller at bilen har fått en konkret skade, for eksempel en bulk. Ingen skade meldes før kunden velger det selv.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+}
 
 const coverageTool = {
   type: 'function',
@@ -84,7 +96,7 @@ const coverageTool = {
   },
 }
 
-export async function chat(messages: ChatMessage[], customer: MockCustomer, priorities: string[] = []): Promise<Response> {
+export async function chat(messages: ApiChatMessage[], customer: MockCustomer, priorities: string[] = []): Promise<Response> {
   const { AI_API_KEY, AI_MODEL, AI_BASE_URL = 'https://api.openai.com/v1' } = process.env
   if (!AI_API_KEY) return error('AI_API_KEY er ikke satt. Legg den inn i frontend/.env.')
   if (!AI_MODEL) return error('AI_MODEL er ikke satt. Legg den inn i frontend/.env.')
@@ -95,7 +107,7 @@ export async function chat(messages: ChatMessage[], customer: MockCustomer, prio
     body: JSON.stringify({
       model: AI_MODEL,
       messages: [{ role: 'system', content: VEKTEREN_SYSTEM_PROMPT.replace('__CUSTOMER_DATA__', () => JSON.stringify(customer, null, 2)).replace('__PRIORITIES__', () => JSON.stringify(priorities, null, 2)) }, ...messages.map(({ role, content }) => ({ role, content }))],
-      tools: [coverageTool],
+      tools: [coverageTool, carDamageTool],
       parallel_tool_calls: false,
     }),
   })
@@ -105,6 +117,10 @@ export async function chat(messages: ChatMessage[], customer: MockCustomer, prio
   const data = (await response.json()) as { choices?: { message?: { content?: string; tool_calls?: { function: { name: string; arguments: string } }[] } }[] }
   const message = data.choices?.[0]?.message
   const calls = message?.tool_calls ?? []
+  if (calls.length === 1 && calls[0].function.name === 'start_car_damage_flow') {
+    // The browser renders the scripted first step; the reply doubles as its text.
+    return Response.json({ reply: carDamageTexts.start, actions: [], flow: CAR_DAMAGE_FLOW })
+  }
   if (calls.length) {
     // Validate the entire action before returning it; the browser applies it
     // atomically with the assistant message. Never mutate server-global data.
