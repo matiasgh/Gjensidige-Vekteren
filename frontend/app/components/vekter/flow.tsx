@@ -13,7 +13,7 @@ export function FlowScreen({ title, backTo = '/chat', backLabel = 'Tilbake til s
       <h1 className="font-display text-xl">{title}</h1>
     </header>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">{children}</div>
-    {actions && <div className="flex shrink-0 flex-col gap-3 px-6 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{actions}</div>}
+    {actions && <div className="flex shrink-0 flex-col gap-4 px-6 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{actions}</div>}
   </main>
 }
 
@@ -59,10 +59,10 @@ export function StatusCheck({ done, children }: { done: boolean; children: React
   </li>
 }
 
-/** Rounded reply chips under an assistant message; the first option is highlighted. */
+/** Rounded reply chips under an assistant message. Answers are equal, so none is highlighted. */
 export function QuickReplies({ options, onSelect, disabled }: { options: string[]; onSelect: (option: string) => void; disabled?: boolean }) {
   return <div role="group" aria-label="Svaralternativer" className="flex flex-wrap gap-2">
-    {options.map((option, index) => <Button key={option} type="button" size="sm" variant={index === 0 ? 'default' : 'outline'} disabled={disabled} onClick={() => onSelect(option)} className={cn('h-10 rounded-full px-4', index > 0 && 'border-[#7f8bc0] bg-transparent')}>{option}</Button>)}
+    {options.map((option) => <Button key={option} type="button" size="sm" variant="outline" disabled={disabled} onClick={() => onSelect(option)} className="h-10 rounded-full px-4">{option}</Button>)}
   </div>
 }
 

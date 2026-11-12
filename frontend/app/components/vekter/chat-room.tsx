@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { ArrowLeft, ArrowRight, CarFront, CircleHelp, House, LoaderCircle, Phone, Plus, ShieldCheck, Umbrella } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
-import { ApproveOfferSheet, AssistantIdentity, AssistantMark, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, CoverageCheck, OfferCard, QuickReplies, ReceiptCard, TipCard } from '~/components/vekter'
+import { ActionStack, ApproveOfferSheet, AssistantIdentity, AssistantMark, AttachSheet, ChatBubble, ChatComposer, ChatImageBubble, CoverageCheck, OfferCard, QuickReplies, ReceiptCard, TipCard } from '~/components/vekter'
 import { analysisText, CAR_DAMAGE_FLOW, carCoverage, carDamageTexts, DAMAGE_PHOTO_CONTENT } from '~/lib/car-damage'
 import { coverageCheckItems, isAiBlockList, type AiBlock, type QuickReplyOption } from '~/lib/chat-blocks'
 import { applyMockAction, isCoverageAction, isMockAction, type MockAction } from '~/lib/mock-actions'
@@ -28,6 +28,7 @@ const damageActions = [
   { to: '/skade/verksted', label: 'Finn verksted' },
   { to: '/skade/berging', label: 'Kontakt bilbergning' },
 ]
+const [primaryDamageAction, ...secondaryDamageActions] = damageActions
 
 const blocksOf = (message: ChatMessage, type: AiBlock['type']) => message.blocks?.filter((block) => block.type === type) ?? []
 
@@ -298,8 +299,8 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
                     {message.receipt && getOffer(message.receipt.offerId) && <ReceiptCard title={`Ferdig. Familien er dekket fra ${getOffer(message.receipt.offerId)!.startLabel}.`} lines={receiptLines(message.receipt)} />}
                     {renderBlocks(message, index)}
                     {message.kind === 'damage-start' && index === messages.length - 1 && <QuickReplies options={[carDamageTexts.uninjuredReply, carDamageTexts.injuredReply]} onSelect={answerSafety} disabled={isLoading} />}
-                    {message.kind === 'damage-injured' && <Button asChild variant="outline" size="sm" className="h-10 rounded-full border-[#7f8bc0] bg-transparent px-4"><a href="tel:113"><Phone /> Ring 113</a></Button>}
-                    {message.kind === 'damage-actions' && index === lastActionsIndex && <div className="flex flex-col gap-3">{damageActions.map(({ to, label }, actionIndex) => <Button key={to} asChild variant={actionIndex === 0 ? 'default' : 'outline'} className={`h-12 w-full rounded-sm text-base font-bold ${actionIndex > 0 ? 'border-[#7f8bc0] bg-transparent' : ''}`}><Link to={to}>{label}</Link></Button>)}</div>}
+                    {message.kind === 'damage-injured' && <Button asChild variant="outline" size="sm" className="h-10 rounded-full px-4"><a href="tel:113"><Phone /> Ring 113</a></Button>}
+                    {message.kind === 'damage-actions' && index === lastActionsIndex && <ActionStack primary={<Button asChild><Link to={primaryDamageAction.to}>{primaryDamageAction.label}</Link></Button>} secondary={secondaryDamageActions.map(({ to, label }) => <Button key={to} asChild><Link to={to}>{label}</Link></Button>)} />}
                   </div>)}
                 </div>
                 {isLoading && <p role="status" className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> {loadingText}</p>}

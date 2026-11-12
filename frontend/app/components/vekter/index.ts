@@ -1,3 +1,4 @@
+export { ActionStack } from './action-stack'
 export { AdvisorNote } from './advisor-note'
 export { AssistantIdentity, AssistantMark } from './assistant-identity'
 export { ChatBubble, ChatComposer, ChatImageBubble } from './chat'

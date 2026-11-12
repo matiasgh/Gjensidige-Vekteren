@@ -5,7 +5,7 @@ Open `/components` for the interactive catalog. It uses local demo state and nev
 ## Layers
 
 - `ui/`: actual shadcn/ui registry components, owned by this repository. Radix provides accessible switch, dialog, and tab behavior. `cn` combines clsx and tailwind-merge.
-- `vekter/`: product patterns composed from those primitives: `AssistantIdentity`, `AssistantMark`, `AdvisorNote`, `CoverageRow`, `InsuranceRow`, `CoverageRing`, `StepProgress`, `ChatBubble`, `ChatImageBubble`, `ChatComposer` (optional `onAttach` shows a **+** button), `AttachSheet` (the “Legg ved” bottom sheet), and the flow-screen parts `FlowScreen`, `DetailRow` (inline Endre), `StaticMap` (decorative illustration, not a real map), `StatusCheck`, `QuickReplies` and `ApprovedBadge`.
+- `vekter/`: product patterns composed from those primitives: `AssistantIdentity`, `AssistantMark`, `ActionStack`, `AdvisorNote`, `CoverageRow`, `InsuranceRow`, `CoverageRing`, `StepProgress`, `ChatBubble`, `ChatImageBubble`, `ChatComposer` (optional `onAttach` shows a **+** button), `AttachSheet` (the “Legg ved” bottom sheet), and the flow-screen parts `FlowScreen`, `DetailRow` (inline Endre), `StaticMap` (decorative illustration, not a real map), `StatusCheck`, `QuickReplies` and `ApprovedBadge`.
 - `app/app.css`: semantic theme tokens. Add `vekter-theme` to a container to opt into the prototype's navy/yellow appearance. The onboarding (`/onboarding`), overview (`/`), chat (`/chat`) and catalog all use this theme; the root defaults remain light for other consumers.
 
 ```tsx
@@ -18,6 +18,16 @@ import { CoverageRow, AdvisorNote } from '~/components/vekter'
   <Button onClick={requestConfirmation}>Lagre endringer</Button>
 </section>
 ```
+
+## Actions: one primary per group
+
+Where two or more buttons stand together, only one is primary. Use `ActionStack` from `vekter/`: it takes exactly one `primary` button, optional `secondary` (one button or a list) and an optional `hint`. It forces `variant` and `size="action"` (52px, 4px radius, Gjensidige Sans Bold 16), puts the primary on top, secondaries below with 16px spacing and the hint underneath (14px, muted). On desktop the stack is centred and all buttons share the widest width. A disabled primary (e.g. «Lagre endringer» before anything changes) stays primary.
+
+```tsx
+<ActionStack primary={<Button onClick={save} disabled={!dirty}>Lagre endringer</Button>} secondary={<Button onClick={ask}>Spør Vekter’n om reisen</Button>} />
+```
+
+`Button` `default` is the primary style (yellow); `outline` is the secondary style (transparent, 1px `--secondary-action-border` = #7F8BC0 in `vekter-theme`, white text). Exception: compact pill actions inside chat cards (e.g. «Se og godkjenn» / «Nei takk») sit side by side; at most one is filled and it comes first. `QuickReplies` are answers, not actions, so all options use `outline` and none is highlighted. Selected toggle chips are state, not actions.
 
 Use controlled switches for real domain state; disabled coverage rows represent mandatory or externally managed coverage. `ChatComposer` submits trimmed text on Enter (Shift+Enter adds a line) and calls the supplied callback; the caller owns network requests, pending state, errors, and message history. Pass `disabled` while a request is pending.
 
