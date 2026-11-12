@@ -3,6 +3,7 @@ import { isAiBlockList, type AiBlock } from './chat-blocks'
 import { createDefaultCustomer, isMockCustomer, mockCustomer, type MockCustomer } from './mock-customer'
 import { insuranceMonthlyPrice } from './mock-actions'
 import { getOffer } from './travel-offer'
+import { TRAVEL_REVIEW_STAGE } from './travel-flow'
 
 export const OFFER_APPROVED_KIND = 'offer-approved'
 export type ChatMessageKind = CarDamageKind | typeof OFFER_APPROVED_KIND
@@ -11,13 +12,13 @@ export type OfferReceipt = { offerId: string; reminderSet: boolean }
 
 // `image` is a downscaled JPEG data URL kept only in the browser; `kind` marks
 // scripted flow messages so the chat can render their buttons; `blocks` are the
-// validated cards of a `reply_with_blocks` answer; `receipt` belongs to an
+// validated cards of a structured answer; `receipt` belongs to an
 // approved offer. All are optional, so stored v2 conversations remain valid.
-export type ChatMessage = { role: 'user' | 'assistant'; content: string; image?: string; kind?: ChatMessageKind; blocks?: AiBlock[]; receipt?: OfferReceipt }
+export type ChatMessage = { role: 'user' | 'assistant'; content: string; image?: string; kind?: ChatMessageKind; blocks?: AiBlock[]; receipt?: OfferReceipt; followUp?: string; travelStage?: typeof TRAVEL_REVIEW_STAGE }
 export type Reminder = { title: string; dueDate: string }
 /** The text-only shape accepted by /api/chat. */
 /** The text shape accepted by /api/chat; assistant messages may carry the cards they showed. */
-export type ApiChatMessage = { role: 'user' | 'assistant'; content: string; blocks?: AiBlock[] }
+export type ApiChatMessage = Pick<ChatMessage, 'role' | 'content' | 'blocks' | 'followUp' | 'travelStage'>
 export type MockConversation = { id: string; messages: ChatMessage[] }
 // Priorities are the step 3 chips plus anything the customer wrote there.
 export type OnboardingState = { completed: boolean; priorities: string[] }
@@ -67,11 +68,13 @@ export function isChatMessage(value: unknown): value is ChatMessage {
     && (message.image === undefined || (typeof message.image === 'string' && message.image.startsWith('data:image/') && message.image.length <= MAX_IMAGE_DATA_URL_LENGTH))
     && (message.kind === undefined || message.kind === OFFER_APPROVED_KIND || (carDamageKinds as readonly unknown[]).includes(message.kind))
     && (message.blocks === undefined || (message.role === 'assistant' && isAiBlockList(message.blocks)))
+    && (message.followUp === undefined || (message.role === 'assistant' && typeof message.followUp === 'string' && !!message.followUp.trim() && message.followUp.length <= 1500))
+    && (message.travelStage === undefined || (message.role === 'assistant' && message.travelStage === TRAVEL_REVIEW_STAGE))
     && (message.receipt === undefined || (message.role === 'user' && message.kind === OFFER_APPROVED_KIND && isReceipt(message.receipt)))
 }
 
 export function isApiChatMessage(value: unknown): value is ApiChatMessage {
-  return isChatMessage(value) && Object.keys(value).every((key) => key === 'role' || key === 'content' || key === 'blocks')
+  return isChatMessage(value) && Object.keys(value).every((key) => ['role', 'content', 'blocks', 'followUp', 'travelStage'].includes(key))
 }
 
 export const receiptLines = (receipt: OfferReceipt) => ['Kvittering sendt på e-post', 'Oversikten din er oppdatert', ...(receipt.reminderSet ? ['Påminnelse om vaksine er satt'] : [])]
@@ -79,12 +82,12 @@ export const receiptLines = (receipt: OfferReceipt) => ['Kvittering sendt på e-
 // Images never leave the browser: the AI only gets a short note that a photo was sent.
 // Receipts become short notes; cards are sent along as structured blocks.
 export function toApiMessages(messages: ChatMessage[], firstName: string): ApiChatMessage[] {
-  return messages.map(({ role, content, image, blocks, receipt }) => {
+  return messages.map(({ role, content, image, blocks, receipt, followUp, travelStage }) => {
     if (image) return { role, content: `[${firstName} sendte et bilde av skaden]` }
     const offer = receipt && getOffer(receipt.offerId)
     if (receipt && offer) return { role, content: `[${firstName} godkjente ${offer.title}. Appen viste kvitteringen: ${offer.title} er lagt til i profilen, ${receiptLines(receipt).join(', ').toLowerCase()}.]` }
-    // The server replays cards as reply_with_blocks tool calls, so the model keeps using the tool.
-    return blocks ? { role, content, blocks } : { role, content }
+    // The server replays assistant answers using the structured response contract.
+    return { role, content, ...(blocks ? { blocks } : {}), ...(followUp ? { followUp } : {}), ...(travelStage ? { travelStage } : {}) }
   })
 }
 

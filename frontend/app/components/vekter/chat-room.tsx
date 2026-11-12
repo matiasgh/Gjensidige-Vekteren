@@ -10,6 +10,7 @@ import { applyMockAction, isCoverageAction, isMockAction, type MockAction } from
 import { optionLabels, type MockCustomer } from '~/lib/mock-customer'
 import { addDays, createConversation, createDefaultState, MAX_REMINDERS, OFFER_APPROVED_KIND, receiptLines, toApiMessages, type ChatMessage, type ChatMessageKind } from '~/lib/mock-state'
 import { getOffer, isOfferPurchased } from '~/lib/travel-offer'
+import { TRAVEL_REVIEW_STAGE } from '~/lib/travel-flow'
 import type { useMockState } from '~/lib/use-mock-state'
 
 const suggestions = [
@@ -78,10 +79,12 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
       // Purchases are never accepted from the server; only the approval sheet can buy.
       if (!Array.isArray(data.actions) || !data.actions.every(isCoverageAction)) throw new Error('Vekter’n returnerte en ugyldig endring. Ingenting er endret.')
       if (data.blocks !== undefined && !isAiBlockList(data.blocks, { customer, fresh: true })) throw new Error('Vekter’n svarte med et kort appen ikke kan vise. Prøv igjen.')
+      if (data.followUp !== undefined && (typeof data.followUp !== 'string' || !data.followUp.trim() || data.followUp.length > 1500)) throw new Error('Vekter’n returnerte ugyldig oppfølgingstekst.')
+      if (data.travelStage !== undefined && data.travelStage !== TRAVEL_REVIEW_STAGE) throw new Error('Vekter’n returnerte et ugyldig samtalesteg.')
       // The AI only decides that the car damage flow starts; its first step is scripted.
       const reply: ChatMessage = data.flow === CAR_DAMAGE_FLOW
         ? { role: 'assistant', content: carDamageTexts.start, kind: 'damage-start' }
-        : { role: 'assistant', content: data.reply, ...(data.blocks ? { blocks: data.blocks } : {}) }
+        : { role: 'assistant', content: data.reply, ...(data.blocks ? { blocks: data.blocks } : {}), ...(data.followUp ? { followUp: data.followUp } : {}), ...(data.travelStage ? { travelStage: data.travelStage } : {}) }
       setState((current) => current && ({
         ...current,
         customer: data.actions.reduce(applyMockAction, current.customer),
@@ -180,10 +183,10 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
   }
 
   function renderBlocks(message: ChatMessage, index: number) {
-    if (!state || !message.blocks) return null
+    if (!state) return null
     const isLast = index === messages.length - 1
     return <>
-      {message.blocks.map((block, blockIndex) => {
+      {(message.blocks ?? []).slice().sort((a, b) => Number(b.type === 'coverage-check') - Number(a.type === 'coverage-check')).map((block, blockIndex) => {
         switch (block.type) {
           case 'coverage-check': {
             const check = coverageCheckItems(state.customer, block.coverageId)
@@ -201,6 +204,7 @@ export default function ChatRoom({ state, setState, storageError, onOpenOverview
             return null
         }
       })}
+      {message.followUp && <ChatBubble role="assistant" className="break-words"><p className="whitespace-pre-wrap">{message.followUp}</p></ChatBubble>}
       {isLast && blocksOf(message, 'quick-replies').map((block, blockIndex) => block.type === 'quick-replies' && <QuickReplies key={`q${blockIndex}`} options={block.options.map(({ label }) => label)} disabled={isLoading} onSelect={(label) => selectQuickReply(block.options.find((option) => option.label === label)!)} />)}
     </>
   }
